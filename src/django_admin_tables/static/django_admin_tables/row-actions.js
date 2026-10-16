@@ -36,6 +36,8 @@
 
     /** Post to `url` in a form of its own: the page follows the response. */
     function submit(url) {
+        // Asked already: no "Leave site?" on top (unsaved-changes.js).
+        document.documentElement.dataset.djangoAdminTablesLeaving = "true";
         var form = document.createElement("form");
         form.method = "post";
         form.action = url;

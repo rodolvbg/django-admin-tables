@@ -43,6 +43,9 @@ First release.
   django-admin-inline-controls' inlines only the inline is refreshed,
   without depending on it. System checks `django_admin_tables.E008` and
   `E009`.
+- `UnsavedChangesMixin`: a changelist with `list_editable` asks before
+  its unsaved edits are lost (pages, filters, sorting, search…), but not
+  when it's saved or an action runs (`list_editable_unsaved_warning`).
 - Hideable and responsive columns and row actions work under a strict
   Content Security Policy: no inline `<style>` nor script.
 - `AdminTablesMixin`: every extra in one mixin, on a `ModelAdmin`, a

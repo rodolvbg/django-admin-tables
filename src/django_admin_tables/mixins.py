@@ -5,6 +5,7 @@ from .fk_links import ForeignKeyLinkMixin
 from .footer import FooterRowsMixin
 from .radio_select import ExclusiveRadioFieldsMixin
 from .row_actions import RowActionsMixin
+from .unsaved import UnsavedChangesMixin
 
 
 class AdminTablesMixin(
@@ -12,6 +13,7 @@ class AdminTablesMixin(
     HideableColumnsMixin,
     FooterRowsMixin,
     RowActionsMixin,
+    UnsavedChangesMixin,
     ExclusiveRadioFieldsMixin,
 ):
     """Every extra in one mixin, for a ``ModelAdmin``, ``TabularInline`` or

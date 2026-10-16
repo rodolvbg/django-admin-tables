@@ -22,6 +22,8 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
   on the changelist and in inlines.
 - **[Row actions](#row-actions)** — buttons on each row ("Feature",
   "Delete"…), on the changelist and in inlines.
+- **[Unsaved changes](#unsaved-changes)** — the changelist asks before
+  losing `list_editable` edits.
 
 ## Install
 
@@ -74,7 +76,7 @@ Foreign key links and hideable columns only apply to a `ModelAdmin`'s
 changelist (an inline has no `list_display`). Each extra's mixin is
 available on its own too: `ExclusiveRadioFieldsMixin`,
 `ForeignKeyLinkMixin`, `HideableColumnsMixin` (hideable and responsive
-columns), `FooterRowsMixin` and `RowActionsMixin`.
+columns), `FooterRowsMixin`, `RowActionsMixin` and `UnsavedChangesMixin`.
 
 ## Exclusive radio fields
 
@@ -447,6 +449,18 @@ Override `row_actions_template` (extending
 `django_admin_tables/row_actions.html`) to change the markup. System
 checks report an action that isn't a method nor a built-in one
 (`django_admin_tables.E008`).
+
+## Unsaved changes
+
+A changelist with `list_editable` asks before its unsaved edits are lost —
+by a page link, a filter, sorting, the search, a link elsewhere, the back
+button — with the browser's own "Leave site?" prompt. Saving the
+changelist, or running an action on it, doesn't ask. After a save with
+errors, the values on the page weren't saved: leaving asks then too.
+
+Django's admin only asks before running an action. It's on with
+`AdminTablesMixin` (or `UnsavedChangesMixin`) as soon as there's
+`list_editable`; `list_editable_unsaved_warning = False` turns it off.
 
 ## Content Security Policy
 

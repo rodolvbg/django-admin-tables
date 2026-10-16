@@ -27,6 +27,7 @@ def test_public_api_is_importable_from_top_level_package():
         "ForeignKeyLinkMixin",
         "HideableColumnsMixin",
         "RowActionsMixin",
+        "UnsavedChangesMixin",
         "row_action",
     ]
 

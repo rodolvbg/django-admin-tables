@@ -4,6 +4,8 @@ file is about the two only working together, through an actual browser,
 against a real running Django server.
 """
 
+import re
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -372,3 +374,40 @@ class TestRowActions(_AdminE2ETestCase):
         )
         expect(self.page.locator("#id_title")).to_have_value("Holiday")
         assert Image.objects.get(title="Beach").is_featured
+
+
+class TestUnsavedChanges(_AdminE2ETestCase):
+    def test_leaving_with_unsaved_list_editable_changes_asks_first(self):
+        Album.objects.create(title="Winter", is_featured=True)
+        Album.objects.create(title="Spring")
+        self.login()
+        changelist = f"{self.live_server_url}/admin/gallery/album/"
+        self.page.goto(changelist)
+        dialogs: list[str] = []
+
+        def answer(accept):
+            def handle(dialog):
+                dialogs.append(dialog.type)
+                dialog.accept() if accept else dialog.dismiss()
+
+            return handle
+
+        # Unchanged: sorting just goes.
+        self.page.locator("th.column-title a").first.click()
+        expect(self.page).to_have_url(re.compile(r"\?o="))
+        assert dialogs == []
+
+        self.page.goto(changelist)
+        self.page.locator(
+            'input[data-radio-select-group="form::is_featured"]:not(:checked)'
+        ).check()
+        self.page.once("dialog", answer(False))
+        self.page.locator("th.column-title a").first.click()
+        expect(self.page).to_have_url(changelist)
+        assert dialogs == ["beforeunload"]
+
+        # Saving sends the edits: no question.
+        self.page.locator('input[name="_save"]').click()
+        expect(self.page.locator(".messagelist")).to_be_visible()
+        assert dialogs == ["beforeunload"]
+        assert Album.objects.get(title="Spring").is_featured
