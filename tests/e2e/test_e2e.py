@@ -222,3 +222,50 @@ class TestResponsiveColumns(_AdminE2ETestCase):
         self.page.set_viewport_size({"width": 1200, "height": 800})
 
         expect(self.page.locator("#images-group th.column-is_featured")).to_be_visible()
+
+
+class TestStrictContentSecurityPolicy(_AdminE2ETestCase):
+    """Without 'unsafe-inline' in style-src, a <style> element is blocked:
+    the columns' CSS is set from columns.js instead."""
+
+    POLICY = (
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+    )
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.violations: list[str] = []
+        self.page.on(
+            "console",
+            lambda message: (
+                self.violations.append(message.text)
+                if "Content Security Policy" in message.text and "style" in message.text
+                else None
+            ),
+        )
+
+        def add_policy(route):
+            response = route.fetch(max_redirects=0)
+            route.fulfill(
+                response=response,
+                headers={**response.headers, "content-security-policy": self.POLICY},
+            )
+
+        self.page.route(f"{self.live_server_url}/**", add_policy)
+
+    def test_menu_and_responsive_columns_still_hide(self):
+        album = self.create_album(images=(("Beach", True),))
+        self.login()
+        self.page.set_viewport_size({"width": 600, "height": 800})
+        self.page.goto(f"{self.live_server_url}/admin/gallery/image/")
+
+        expect(self.page.locator("#result_list th.column-album_link")).to_be_hidden()
+        expect(self.page.locator("#result_list th.column-is_featured")).to_be_hidden()
+        self.page.locator("details.django-admin-tables-columns > summary").click()
+        self.page.get_by_label("Is primary").uncheck()
+        expect(self.page.locator("#result_list th.column-is_primary")).to_be_hidden()
+
+        self.open_change_page(album)
+        expect(self.page.locator("#images-group th.column-is_featured")).to_be_hidden()
+        expect(self.page.locator("#images-group th.column-is_primary")).to_be_visible()
+        assert self.violations == []

@@ -293,8 +293,8 @@ class ImageInline(AdminTablesMixin, admin.TabularInline):
 A width is a breakpoint's name — `"sm"` (640px), `"md"` (768px), `"lg"`
 (1024px), `"xl"` (1280px), `"2xl"` (1536px), Tailwind's, which
 django-unfold uses — or pixels (`{"created": 900}`): the column is hidden
-when the viewport is narrower than that. It's plain CSS media queries, with
-no JavaScript: it follows the window as it's resized or the phone turned.
+when the viewport is narrower than that. They're CSS media queries: they
+follow the window as it's resized or the phone turned.
 Override `get_responsive_columns(request, obj=None)` to choose them per
 request.
 
@@ -312,8 +312,16 @@ includes the inline's own `template`. System checks report an unknown
 width (`django_admin_tables.E003`) and, on a `ModelAdmin`, a column that
 isn't in `list_display` (`django_admin_tables.E004`).
 
-The rules are an inline `<style>`: with a Content Security Policy, allow
-it in `style-src`.
+### Content Security Policy
+
+Both the hideable and the responsive columns work under a strict policy,
+with no `'unsafe-inline'`: their CSS is set by the package's own script,
+`django_admin_tables/columns.js`, as constructed stylesheets (which
+`style-src` doesn't restrict), from JSON data blocks (which `script-src`
+doesn't run). Serve that script from an origin `script-src` allows, as
+the admin's own (`'self'`). Browsers without constructed stylesheets
+(before Safari 16.4) get a `<style>` element instead, which such a policy
+blocks.
 
 ## Themes
 

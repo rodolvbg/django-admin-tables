@@ -1,6 +1,8 @@
 (() => {
     var CONFIG_ID = "django-admin-tables-columns";
     var STYLE_ID = "django-admin-tables-hidden-columns";
+    // One per table with responsive_columns: the changelist, each inline.
+    var RESPONSIVE = 'script[id^="django-admin-tables-responsive-"]';
     var MENU = "details.django-admin-tables-columns";
     var INPUT = "input[data-django-admin-tables-column]";
 
@@ -11,16 +13,77 @@
         return String(value).replace(/[^\w-]/g, "\\$&");
     }
 
-    function readConfig() {
-        var element = document.getElementById(CONFIG_ID);
-        if (!element) {
-            return null;
-        }
+    function parse(element) {
         try {
             return JSON.parse(element.textContent);
         } catch {
             return null;
         }
+    }
+
+    // CSS set from a script, so a Content Security Policy needs no
+    // 'unsafe-inline' in style-src: a constructed stylesheet, or a <style>
+    // element in browsers without them (which that policy would block).
+    var sheets = {};
+
+    function setStyles(id, cssText) {
+        if (
+            typeof CSSStyleSheet === "function" &&
+            Array.isArray(document.adoptedStyleSheets)
+        ) {
+            try {
+                if (!sheets[id]) {
+                    sheets[id] = new CSSStyleSheet();
+                    document.adoptedStyleSheets = [
+                        ...document.adoptedStyleSheets,
+                        sheets[id],
+                    ];
+                }
+                sheets[id].replaceSync(cssText);
+                return;
+            } catch {
+                // Fall back to a <style> element.
+            }
+        }
+        var style = document.getElementById(id);
+        if (!style) {
+            style = document.createElement("style");
+            style.id = id;
+            document.head.appendChild(style);
+        }
+        style.textContent = cssText;
+    }
+
+    function hideRule(scope, classes) {
+        var selectors = classes.map((name) => {
+            var cls = escapeClass(name);
+            return `${scope} .column-${cls}, ${scope} .field-${cls}`;
+        });
+        return `${selectors.join(",\n")} { display: none; }`;
+    }
+
+    // responsive_columns: each table's media queries, applied as soon as
+    // its config is parsed, so its columns never flash on a narrow screen.
+    function applyResponsive() {
+        document.querySelectorAll(RESPONSIVE).forEach((element) => {
+            if (element.dataset.djangoAdminTablesApplied) {
+                return;
+            }
+            element.dataset.djangoAdminTablesApplied = "true";
+            var config = parse(element);
+            if (!config) {
+                return;
+            }
+            setStyles(
+                `${element.id}-style`,
+                config.rules
+                    .map(
+                        (rule) =>
+                            `@media (max-width: ${rule.max_width}px) { ${hideRule(config.scope, rule.classes)} }`,
+                    )
+                    .join("\n"),
+            );
+        });
     }
 
     // The user's choice, or the admin's default (`list_display_hidden`)
@@ -50,23 +113,14 @@
         }
     }
 
-    // One <style> rule hides each column, header and cells alike, by the
+    // One rule hides each column, header and cells alike, by the
     // `column-<name>`/`field-<name>` classes the admin gives them: it
     // applies while the table is parsed, so hidden columns never flash.
     function applyHidden(hidden) {
-        var style = document.getElementById(STYLE_ID);
-        if (!style) {
-            style = document.createElement("style");
-            style.id = STYLE_ID;
-            document.head.appendChild(style);
-        }
-        var selectors = hidden.map((name) => {
-            var cls = escapeClass(name);
-            return `#result_list .column-${cls}, #result_list .field-${cls}`;
-        });
-        style.textContent = hidden.length
-            ? `${selectors.join(",\n")} { display: none; }`
-            : "";
+        setStyles(
+            STYLE_ID,
+            hidden.length ? hideRule("#result_list", hidden) : "",
+        );
     }
 
     function bindMenu(config, hidden) {
@@ -138,7 +192,14 @@
         });
     }
 
-    var config = readConfig();
+    applyResponsive();
+
+    var menuConfig = document.getElementById(CONFIG_ID);
+    if (!menuConfig || menuConfig.dataset.djangoAdminTablesApplied) {
+        return;
+    }
+    menuConfig.dataset.djangoAdminTablesApplied = "true";
+    var config = parse(menuConfig);
     if (!config) {
         return;
     }

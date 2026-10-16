@@ -1,19 +1,17 @@
 {% extends django_admin_tables_columns.parent %}
-{% load static %}
+{% load static django_admin_tables %}
 
 {% block extrastyle %}
   {{ block.super }}
   {% if django_admin_tables_columns.columns %}<link rel="stylesheet" href="{% static 'django_admin_tables/columns.css' %}">{% endif %}
-  {% if django_admin_tables_columns.responsive %}{% include "django_admin_tables/responsive_style.html" with rules=django_admin_tables_columns.responsive scope="#result_list" %}{% endif %}
 {% endblock %}
 
 {% block extrahead %}
   {{ block.super }}
-  {% if django_admin_tables_columns.columns %}
-    {{ django_admin_tables_columns.config|json_script:"django-admin-tables-columns" }}
-    {# Not deferred: it hides the columns before the table is painted. #}
-    <script src="{% static 'django_admin_tables/columns.js' %}"></script>
-  {% endif %}
+  {% if django_admin_tables_columns.columns %}{{ django_admin_tables_columns.config|json_script:"django-admin-tables-columns" }}{% endif %}
+  {% if django_admin_tables_columns.responsive %}{% responsive_columns_config django_admin_tables_columns.responsive "#result_list" %}{% endif %}
+  {# Not deferred: it hides the columns before the table is painted. #}
+  <script src="{% static 'django_admin_tables/columns.js' %}"></script>
 {% endblock %}
 
 {% block search %}

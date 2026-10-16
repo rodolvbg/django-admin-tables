@@ -30,6 +30,9 @@ together, with hideable and responsive columns.
   (`"sm"`…`"2xl"` or pixels), with CSS media queries, on the changelist
   and in tabular inlines; disabled in the "Columns" menu while hidden.
   System checks `django_admin_tables.E003` and `E004`.
+- Hideable and responsive columns work under a strict Content Security
+  Policy: their CSS is set from a script, as constructed stylesheets, with
+  no inline `<style>`.
 - `AdminTablesMixin`: every extra in one mixin, on a `ModelAdmin`, a
   `TabularInline` or a `StackedInline`, each off until its option is set.
 - django-unfold support: Unfold's radio and checkbox classes, link colors,

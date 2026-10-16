@@ -268,6 +268,146 @@ describe("columns.js", () => {
         });
     });
 
+    describe("responsive_columns", () => {
+        function addResponsiveConfig(scope, rules, text) {
+            const script = document.createElement("script");
+            script.id = `django-admin-tables-responsive-${scope.slice(1)}`;
+            script.type = "application/json";
+            script.textContent = text ?? JSON.stringify({ scope, rules });
+            document.head.appendChild(script);
+            return script;
+        }
+
+        function responsiveStyle(scope) {
+            return document.getElementById(
+                `django-admin-tables-responsive-${scope.slice(1)}-style`,
+            )?.textContent;
+        }
+
+        it("applies each table's media queries", async () => {
+            document.body.innerHTML = "";
+            addResponsiveConfig("#result_list", [
+                { max_width: 1023.98, classes: ["title"] },
+                { max_width: 767.98, classes: ["album_link", "pk"] },
+            ]);
+            addResponsiveConfig("#images-group", [
+                { max_width: 767.98, classes: ["is_featured"] },
+            ]);
+            await runScript();
+
+            expect(responsiveStyle("#result_list")).toBe(
+                "@media (max-width: 1023.98px) { #result_list .column-title, #result_list .field-title { display: none; } }\n" +
+                    "@media (max-width: 767.98px) { #result_list .column-album_link, #result_list .field-album_link,\n#result_list .column-pk, #result_list .field-pk { display: none; } }",
+            );
+            expect(responsiveStyle("#images-group")).toContain(
+                "#images-group .column-is_featured",
+            );
+        });
+
+        it("applies a config once, however many times the script runs", async () => {
+            document.body.innerHTML = "";
+            addResponsiveConfig("#images-group", [
+                { max_width: 767.98, classes: ["is_featured"] },
+            ]);
+            await runScript();
+            document.getElementById(
+                "django-admin-tables-responsive-images-group-style",
+            ).textContent = "changed";
+
+            // The script tag after the next inline.
+            addResponsiveConfig("#chapters-group", [
+                { max_width: 767.98, classes: ["notes"] },
+            ]);
+            await runScript();
+
+            expect(responsiveStyle("#images-group")).toBe("changed");
+            expect(responsiveStyle("#chapters-group")).toContain(
+                ".field-notes",
+            );
+        });
+
+        it("skips a broken config", async () => {
+            document.body.innerHTML = "";
+            addResponsiveConfig("#result_list", [], "{not json");
+            await runScript();
+            expect(responsiveStyle("#result_list")).toBeUndefined();
+        });
+
+        it("works along the columns menu", async () => {
+            setUpPage({ hidden: ["is_primary"] });
+            addResponsiveConfig("#result_list", [
+                { max_width: 767.98, classes: ["album_link"] },
+            ]);
+            await runScript();
+
+            expect(style()).toContain(".column-is_primary");
+            expect(responsiveStyle("#result_list")).toContain(
+                ".column-album_link",
+            );
+        });
+    });
+
+    describe("constructed stylesheets", () => {
+        class FakeSheet {
+            replaceSync(text) {
+                this.cssText = text;
+            }
+        }
+
+        beforeEach(() => {
+            window.CSSStyleSheet = FakeSheet;
+            document.adoptedStyleSheets = [];
+        });
+
+        afterEach(() => {
+            delete window.CSSStyleSheet;
+            delete document.adoptedStyleSheets;
+        });
+
+        it("are used instead of <style> elements, for a CSP", async () => {
+            setUpPage({ hidden: ["is_primary"] });
+            await runScript();
+
+            expect(style()).toBeUndefined();
+            expect(document.adoptedStyleSheets).toHaveLength(1);
+            expect(document.adoptedStyleSheets[0].cssText).toContain(
+                ".column-is_primary",
+            );
+
+            // Its own sheet is updated (earlier tests' copies of the script
+            // still listen on this document, and add theirs).
+            toggle("album_link");
+            expect(document.adoptedStyleSheets[0].cssText).toContain(
+                ".column-album_link",
+            );
+        });
+
+        it("fall back to a <style> element when they fail", async () => {
+            FakeSheet.prototype.replaceSync = () => {
+                throw new Error("unsupported");
+            };
+            try {
+                setUpPage({ hidden: ["is_primary"] });
+                await runScript();
+            } finally {
+                FakeSheet.prototype.replaceSync = function (text) {
+                    this.cssText = text;
+                };
+            }
+            expect(style()).toContain(".column-is_primary");
+        });
+    });
+
+    it("runs the menu once, however many times the script runs", async () => {
+        setUpPage();
+        await runScript();
+        await runScript();
+        toggle("album_link");
+        expect(JSON.parse(window.localStorage.getItem(storageKey))).toEqual([
+            "album_link",
+        ]);
+    });
+
     it("closes the menu on a click outside it, or on Escape", async () => {
         setUpPage();
         await runScript();

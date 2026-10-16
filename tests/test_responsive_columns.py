@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from django.contrib import admin
 from django.test import Client, RequestFactory
@@ -34,6 +36,15 @@ def album():
     album = Album.objects.create(title="Holiday")
     Image.objects.create(album=album, title="Beach", is_primary=True)
     return album
+
+
+def responsive_config(content, table):
+    """The JSON columns.js reads for ``table``'s media queries."""
+    start = (
+        f'<script id="django-admin-tables-responsive-{table}" type="application/json">'
+    )
+    assert start in content
+    return json.loads(content.split(start)[1].split("</script>")[0])
 
 
 def get(superuser):
@@ -85,10 +96,13 @@ class TestChangelist:
         response = admin_client.get(reverse("admin:gallery_image_changelist"))
 
         content = response.content.decode()
-        assert (
-            "@media (max-width: 767.98px) { #result_list .column-album_link,"
-            " #result_list .field-album_link { display: none; } }"
-        ) in content
+        assert responsive_config(content, "result_list") == {
+            "scope": "#result_list",
+            "rules": [{"max_width": 767.98, "classes": ["album_link"]}],
+        }
+        assert "django_admin_tables/columns.js" in content
+        # No <style>: a Content Security Policy needn't allow inline styles.
+        assert "<style" not in content
 
     def test_only_responsive_columns_skip_the_menu(self, superuser, album):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
@@ -99,9 +113,11 @@ class TestChangelist:
         response.render()
 
         content = response.content.decode()
-        assert "@media (max-width: 899.98px)" in content
-        assert "django-admin-tables-columns" not in content
-        assert "columns.js" not in content
+        rules = responsive_config(content, "result_list")["rules"]
+        assert rules == [{"max_width": 899.98, "classes": ["album"]}]
+        assert "django_admin_tables/columns.js" in content
+        assert 'id="django-admin-tables-columns"' not in content
+        assert "columns.css" not in content
 
     def test_responsive_columns_can_depend_on_the_request(self, superuser, album):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
@@ -128,15 +144,17 @@ class TestInline:
         )
 
         content = response.content.decode()
-        assert (
-            "@media (max-width: 767.98px) { #images-group .column-is_featured,"
-            " #images-group .field-is_featured { display: none; } }"
-        ) in content
-        # The inline's own template still renders, after the rules.
-        assert content.index("#images-group .column-is_featured") < content.index(
-            'id="images-group"'
-        )
+        assert responsive_config(content, "images-group") == {
+            "scope": "#images-group",
+            "rules": [{"max_width": 767.98, "classes": ["is_featured"]}],
+        }
+        # The config and the script come first, then the inline's own
+        # template: the columns are hidden before it's painted.
+        config = content.index("django-admin-tables-responsive-images-group")
+        script = content.index("django_admin_tables/columns.js", config)
+        assert config < script < content.index('id="images-group"')
         assert 'class="field-is_featured"' in content
+        assert "<style" not in content
 
     def test_template_is_swapped_once(self, superuser):
         inline = ImageInline(Album, admin.site)

@@ -1,8 +1,0 @@
-{% comment %}
-  The columns hidden below a viewport width: ``rules`` from
-  ``responsive.media_rules()``, scoped to the ``scope`` selector.
-{% endcomment %}{% spaceless %}
-<style>{% for rule in rules %}
-@media (max-width: {{ rule.max_width|stringformat:"g" }}px) { {% for css_class in rule.classes %}{{ scope }} .column-{{ css_class }}, {{ scope }} .field-{{ css_class }}{% if not forloop.last %}, {% endif %}{% endfor %} { display: none; } }{% endfor %}
-</style>
-{% endspaceless %}
