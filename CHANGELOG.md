@@ -35,9 +35,16 @@ First release.
   its filters, paging and refreshes, without depending on it. System
   checks `django_admin_tables.E005` to
   `E007`.
-- Hideable and responsive columns work under a strict Content Security
-  Policy: their CSS is set from a script, as constructed stylesheets, with
-  no inline `<style>`.
+- `RowActionsMixin`: buttons on each row (`row_actions`), on the
+  changelist (an "Actions" column) and in inlines, with `"view"` and
+  `"delete"` built in, `@row_action` for permissions, labels and
+  confirmations, and per-row hooks. Each one posts to the `ModelAdmin`
+  (`<pk>/row-action/<action>/`) and comes back to the page; on
+  django-admin-inline-controls' inlines only the inline is refreshed,
+  without depending on it. System checks `django_admin_tables.E008` and
+  `E009`.
+- Hideable and responsive columns and row actions work under a strict
+  Content Security Policy: no inline `<style>` nor script.
 - `AdminTablesMixin`: every extra in one mixin, on a `ModelAdmin`, a
   `TabularInline` or a `StackedInline`, each off until its option is set.
 - django-unfold support: Unfold's radio and checkbox classes, link colors,

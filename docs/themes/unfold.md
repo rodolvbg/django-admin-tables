@@ -17,7 +17,8 @@ Works with [django-unfold](https://unfoldadmin.com/) as it is, on its
 - the responsive columns' breakpoints are Unfold's own (Tailwind's `sm`,
   `md`, `lg`, `xl`, `2xl`), and work on its tabular inlines too, which
   Unfold stacks on phones;
-- the footer rows' `<tfoot>` gets Unfold's colors and cell padding.
+- the footer rows' `<tfoot>` gets Unfold's colors and cell padding;
+- the row actions are styled like Unfold's buttons.
 
 Both in light and dark mode. Tested with django-unfold 0.108.
 
@@ -68,6 +69,12 @@ Footer rows on a changelist, and on an inline in dark mode:
 ![Footer rows on an Unfold changelist](unfold/footer-rows.png)
 
 ![Footer rows on an Unfold inline, dark mode](unfold/footer-rows-inline-dark.png)
+
+Row actions on a changelist, and on an inline in dark mode:
+
+![Row actions on an Unfold changelist](unfold/row-actions.png)
+
+![Row actions on an Unfold inline, dark mode](unfold/row-actions-inline-dark.png)
 
 ## Demo
 

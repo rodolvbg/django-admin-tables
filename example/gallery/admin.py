@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count, Q
 
-from django_admin_tables import AdminTablesMixin
+from django_admin_tables import AdminTablesMixin, row_action
 
 from .models import Album, AlbumStacked, Image
 
@@ -21,6 +21,21 @@ class ImageTabularInline(AdminTablesMixin, admin.TabularInline):
             },
         ),
     ]
+    row_actions = ["toggle_featured", "delete"]
+
+    @row_action(permissions=["change"])
+    def toggle_featured(self, request, obj):
+        obj.is_featured = not obj.is_featured
+        obj.save(update_fields=["is_featured"])
+        self.message_user(
+            request,
+            f"“{obj}” is featured now."
+            if obj.is_featured
+            else f"“{obj}” isn't featured now.",
+        )
+
+    def get_toggle_featured_label(self, obj):
+        return "Unfeature" if obj.is_featured else "Feature"
 
 
 class ImageStackedInline(AdminTablesMixin, admin.StackedInline):
@@ -52,6 +67,7 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display_hideable = ("album", "is_primary", "is_featured")
     list_display_hidden = ("is_featured",)
     responsive_columns = {"album": "md"}
+    row_actions = ["view", "toggle_featured", "delete"]
     footer_rows = [
         (
             "Total",
@@ -62,3 +78,17 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
             },
         ),
     ]
+
+    @row_action(permissions=["change"])
+    def toggle_featured(self, request, obj):
+        obj.is_featured = not obj.is_featured
+        obj.save(update_fields=["is_featured"])
+        self.message_user(
+            request,
+            f"“{obj}” is featured now."
+            if obj.is_featured
+            else f"“{obj}” isn't featured now.",
+        )
+
+    def get_toggle_featured_label(self, obj):
+        return "Unfeature" if obj.is_featured else "Feature"

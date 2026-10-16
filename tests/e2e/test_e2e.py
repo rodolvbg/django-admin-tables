@@ -279,6 +279,10 @@ class TestStrictContentSecurityPolicy(_AdminE2ETestCase):
         self.open_change_page(album)
         expect(self.page.locator("#images-group th.column-is_featured")).to_be_hidden()
         expect(self.page.locator("#images-group th.column-is_primary")).to_be_visible()
+
+        # The row actions' script, too.
+        self.page.locator("#images-group").get_by_role("button", name="Feature").click()
+        expect(self.page.locator(".messagelist")).to_contain_text("featured now")
         assert self.violations == []
 
 
@@ -307,3 +311,64 @@ class TestFooterRows(_AdminE2ETestCase):
         footer = self.page.locator("#images-group tfoot")
         expect(footer.locator("td.field-title")).to_contain_text("2")
         expect(footer.locator("td.field-is_primary")).to_contain_text("1")
+
+
+class TestRowActions(_AdminE2ETestCase):
+    def test_changelist_button_runs_the_action(self):
+        self.create_album(images=(("Beach", True),))
+        self.login()
+        self.page.goto(f"{self.live_server_url}/admin/gallery/image/?q=")
+
+        self.page.get_by_role("button", name="Feature").click()
+
+        expect(self.page).to_have_url(f"{self.live_server_url}/admin/gallery/image/?q=")
+        expect(self.page.locator(".messagelist")).to_contain_text(
+            "“Beach” is featured now."
+        )
+        expect(self.page.get_by_role("button", name="Unfeature")).to_be_visible()
+        assert Image.objects.get(title="Beach").is_featured
+
+    def test_delete_asks_first(self):
+        self.create_album(images=(("Beach", True), ("City", False)))
+        self.login()
+        self.page.goto(f"{self.live_server_url}/admin/gallery/image/")
+        row = self.page.locator("#result_list tbody tr", has_text="City")
+
+        self.page.once("dialog", lambda dialog: dialog.dismiss())
+        row.get_by_role("button", name="Delete").click()
+        assert Image.objects.filter(title="City").exists()
+
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        row.get_by_role("button", name="Delete").click()
+        expect(self.page.locator(".messagelist")).to_contain_text("Deleted “City”.")
+        assert not Image.objects.filter(title="City").exists()
+
+    def test_inline_button_and_unsaved_changes(self):
+        album = self.create_album(images=(("Beach", True),))
+        self.login()
+        self.open_change_page(album)
+        self.page.fill("#id_title", "Edited")
+        button = self.page.locator("#images-group").get_by_role(
+            "button", name="Feature"
+        )
+
+        messages: list[str] = []
+
+        def dismiss(dialog):
+            messages.append(dialog.message)
+            dialog.dismiss()
+
+        self.page.once("dialog", dismiss)
+        button.click()
+        assert messages == [
+            "You have unsaved changes on this page: they will be lost. Continue?"
+        ]
+        assert not Image.objects.get(title="Beach").is_featured
+
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        button.click()
+        expect(self.page.locator(".messagelist")).to_contain_text(
+            "“Beach” is featured now."
+        )
+        expect(self.page.locator("#id_title")).to_have_value("Holiday")
+        assert Image.objects.get(title="Beach").is_featured

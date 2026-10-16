@@ -20,6 +20,8 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
   narrow screens, on the changelist and in tabular inlines.
 - **[Footer rows](#footer-rows)** — totals, averages… below the columns,
   on the changelist and in inlines.
+- **[Row actions](#row-actions)** — buttons on each row ("Feature",
+  "Delete"…), on the changelist and in inlines.
 
 ## Install
 
@@ -58,6 +60,7 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display_hideable = ("album",)  # hideable columns
     responsive_columns = {"album": "md"}  # responsive columns
     footer_rows = [("Total", {"title": Count("pk")})]  # footer rows
+    row_actions = ["view", "delete"]  # row actions
     radio_select_exclusive_fields = ("is_primary",)  # exclusive radio fields
 
 
@@ -71,7 +74,7 @@ Foreign key links and hideable columns only apply to a `ModelAdmin`'s
 changelist (an inline has no `list_display`). Each extra's mixin is
 available on its own too: `ExclusiveRadioFieldsMixin`,
 `ForeignKeyLinkMixin`, `HideableColumnsMixin` (hideable and responsive
-columns) and `FooterRowsMixin`.
+columns), `FooterRowsMixin` and `RowActionsMixin`.
 
 ## Exclusive radio fields
 
@@ -378,6 +381,73 @@ plain number, `"1234.5"`) for your JS. Override `footer_tfoot_template` or
 pair (`django_admin_tables.E006`) and, on a `ModelAdmin`, a column that
 isn't in `list_display` (`django_admin_tables.E007`).
 
+## Row actions
+
+Buttons on each row, on a `ModelAdmin`'s changelist or in an inline:
+
+```python
+from django_admin_tables import AdminTablesMixin, row_action
+
+
+@admin.register(Image)
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
+    list_display = ("title", "album", "row_actions")  # or last, by default
+    row_actions = ["view", "toggle_featured", "delete"]
+
+    @row_action(permissions=["change"])
+    def toggle_featured(self, request, obj):
+        obj.is_featured = not obj.is_featured
+        obj.save()
+        self.message_user(request, f"“{obj}” updated.")
+
+    def get_toggle_featured_label(self, obj):
+        return "Unfeature" if obj.is_featured else "Feature"
+
+
+class ImageInline(AdminTablesMixin, admin.TabularInline):
+    model = Image
+    row_actions = ["toggle_featured", "delete"]
+    ...
+```
+
+![A changelist with View, Feature and Delete buttons on each row](docs/screenshots/row-actions.png)
+
+- An action is a method (listed by name) or a callable, taking **one
+  row**, `(request, obj)` — on an inline it may take `parent_obj` too, the
+  object being edited — or **a queryset** with only that row,
+  `(request, queryset)`: the admin's own actions work as they are.
+- **Built in:** `"view"`, a link to the row's change view, and `"delete"`,
+  which asks first, deletes the row (its `delete()` and signals run) and
+  records it in the history.
+- `@row_action(permissions=[...], description="...", confirmation="...")`
+  (or `@admin.action`) sets who may run it — checked for the row, or on an
+  inline for the object being edited —, its label and a confirmation
+  prompt; `%(object)s`, `%(verbose_name)s` can be used in both. Per row,
+  `get_<action>_label(obj)`, `get_<action>_css(obj)` and
+  `get_<action>_attrs(obj)` change them, and `get_row_actions(request, obj)`
+  which actions a row gets. `@row_action(link=True)` with
+  `get_<action>_url(obj)` makes a link of it.
+- A button posts to the `ModelAdmin`'s `<pk>/row-action/<action>/` URL,
+  which runs the action and comes back to the page — keeping its filters,
+  search and page — with the messages it sent (`message_user()`). Return an
+  `HttpResponse` instead for a file download or another page. With unsaved
+  changes on the page, it asks before leaving them.
+- On a changelist the buttons are the "Actions" column (`"row_actions"` in
+  `list_display` places it). In an inline they're a read-only column of its
+  saved rows, and post to the parent `ModelAdmin`, which needs the mixin
+  too (`django_admin_tables.E009`).
+- With [django-admin-inline-controls](https://github.com/rodolvbg/django-admin-inline-controls)
+  on the inline, an action refreshes only the inline, in place, with its
+  filters and page, and shows its messages. Neither package depends on the
+  other.
+
+![Feature and Delete buttons on a tabular inline's rows](docs/screenshots/row-actions-inline.png)
+
+Override `row_actions_template` (extending
+`django_admin_tables/row_actions.html`) to change the markup. System
+checks report an action that isn't a method nor a built-in one
+(`django_admin_tables.E008`).
+
 ## Content Security Policy
 
 Both the hideable and the responsive columns work under a strict policy,
@@ -388,6 +458,9 @@ doesn't run). Serve that script from an origin `script-src` allows, as
 the admin's own (`'self'`). Browsers without constructed stylesheets
 (before Safari 16.4) get a `<style>` element instead, which such a policy
 blocks.
+
+The row actions' buttons have no inline handlers either: their script,
+`django_admin_tables/row-actions.js`, is a static file too.
 
 ## Themes
 

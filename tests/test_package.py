@@ -26,6 +26,8 @@ def test_public_api_is_importable_from_top_level_package():
         "FooterRowsMixin",
         "ForeignKeyLinkMixin",
         "HideableColumnsMixin",
+        "RowActionsMixin",
+        "row_action",
     ]
 
 

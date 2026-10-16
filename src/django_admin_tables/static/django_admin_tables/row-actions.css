@@ -1,0 +1,49 @@
+/* The row actions of RowActionsMixin: Django's admin. */
+
+.django-admin-tables-row-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.django-admin-tables-row-actions .django-admin-tables-row-action.button {
+    margin: 0;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* A link ("view") like the buttons: over the admin's own link rules, which
+   target the changelist by its id. */
+.inline-group .django-admin-tables-row-actions
+    a.django-admin-tables-row-action {
+    color: var(--button-fg, #fff);
+    text-decoration: none;
+}
+
+#changelist .django-admin-tables-row-actions a.django-admin-tables-row-action {
+    color: var(--button-fg, #fff);
+    text-decoration: none;
+}
+
+/* The result of an action run in place (django-admin-inline-controls). */
+.django-admin-tables-row-action-status {
+    position: fixed;
+    z-index: 1000;
+    right: 16px;
+    bottom: 16px;
+    max-width: min(28rem, calc(100vw - 32px));
+    padding: 10px 14px;
+    border-radius: 4px;
+    background: var(--message-success-bg, #dfd);
+    color: var(--body-fg, #333);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+    font-size: 0.8125rem;
+}
+
+.django-admin-tables-row-action-status.django-admin-tables-row-action-error {
+    background: var(--message-error-bg, #ffefef);
+}

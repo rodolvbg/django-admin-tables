@@ -4,12 +4,14 @@ from .columns import HideableColumnsMixin
 from .fk_links import ForeignKeyLinkMixin
 from .footer import FooterRowsMixin
 from .radio_select import ExclusiveRadioFieldsMixin
+from .row_actions import RowActionsMixin
 
 
 class AdminTablesMixin(
     ForeignKeyLinkMixin,
     HideableColumnsMixin,
     FooterRowsMixin,
+    RowActionsMixin,
     ExclusiveRadioFieldsMixin,
 ):
     """Every extra in one mixin, for a ``ModelAdmin``, ``TabularInline`` or
@@ -25,10 +27,10 @@ class AdminTablesMixin(
 
     Each extra is off until its option is set
     (``list_display_foreign_key_links``, ``list_display_hideable``,
-    ``responsive_columns``, ``footer_rows``, ``radio_select_exclusive_fields``),
-    and works as the mixin of its own (``ForeignKeyLinkMixin``,
-    ``HideableColumnsMixin``, ``FooterRowsMixin``,
-    ``ExclusiveRadioFieldsMixin``) does. Foreign key links and hideable
-    columns only apply to a ``ModelAdmin``'s changelist: an inline has no
-    ``list_display``.
+    ``responsive_columns``, ``footer_rows``, ``row_actions``,
+    ``radio_select_exclusive_fields``), and works as the mixin of its own
+    (``ForeignKeyLinkMixin``, ``HideableColumnsMixin``, ``FooterRowsMixin``,
+    ``RowActionsMixin``, ``ExclusiveRadioFieldsMixin``) does. Foreign key
+    links and hideable columns only apply to a ``ModelAdmin``'s changelist:
+    an inline has no ``list_display``.
     """

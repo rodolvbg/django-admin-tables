@@ -1,0 +1,43 @@
+/* The row actions of RowActionsMixin: django-unfold's buttons, light and dark. */
+
+.django-admin-tables-row-actions .django-admin-tables-row-action.button,
+#changelist .django-admin-tables-row-actions a.django-admin-tables-row-action {
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--color-base-200);
+    border-radius: var(--border-radius, 6px);
+    background: #fff;
+    color: var(--color-base-700);
+    font-weight: 500;
+}
+
+.django-admin-tables-row-actions .django-admin-tables-row-action.button:hover {
+    color: var(--color-primary-600);
+}
+
+.dark .django-admin-tables-row-actions .django-admin-tables-row-action.button,
+.dark
+    #changelist
+    .django-admin-tables-row-actions
+    a.django-admin-tables-row-action {
+    border-color: var(--color-base-700);
+    background: var(--color-base-900);
+    color: var(--color-base-200);
+}
+
+.dark
+    .django-admin-tables-row-actions
+    .django-admin-tables-row-action.button:hover {
+    color: var(--color-primary-500);
+}
+
+.django-admin-tables-row-action-status {
+    border: 1px solid var(--color-base-200);
+    background: #fff;
+    color: var(--color-base-700);
+}
+
+.dark .django-admin-tables-row-action-status {
+    border-color: var(--color-base-700);
+    background: var(--color-base-900);
+    color: var(--color-base-200);
+}

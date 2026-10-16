@@ -5,6 +5,7 @@ from .fk_links import ForeignKeyLinkMixin
 from .footer import FooterRowsMixin
 from .mixins import AdminTablesMixin
 from .radio_select import ExclusiveRadioFieldsMixin
+from .row_actions import RowActionsMixin, row_action
 
 __all__ = [
     "AdminTablesMixin",
@@ -12,6 +13,8 @@ __all__ = [
     "FooterRowsMixin",
     "ForeignKeyLinkMixin",
     "HideableColumnsMixin",
+    "RowActionsMixin",
+    "row_action",
 ]
 
 __version__ = "0.1.0"
