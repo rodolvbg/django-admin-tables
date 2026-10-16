@@ -481,6 +481,12 @@ The row actions' buttons have no inline handlers either: their script,
 - [django-unfold](docs/themes/unfold.md): works as it is, with Unfold's
   radios, checkboxes, buttons and link colors.
 
+## Translations
+
+Ships a Spanish (`es`) translation; its other texts (column headers,
+messages) come from Django's own catalogs and your models, so they follow
+the admin's language.
+
 ## Supported versions
 
 Django 4.2 – 6.1, Python 3.10+.

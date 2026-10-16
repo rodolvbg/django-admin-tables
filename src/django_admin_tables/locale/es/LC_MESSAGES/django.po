@@ -1,0 +1,64 @@
+# Spanish translation of django-admin-tables.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: django-admin-tables 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-16 23:02+0000\n"
+"PO-Revision-Date: 2026-10-17 01:00+0200\n"
+"Last-Translator: Rodolfo Becerra\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+
+#: row_actions/actions.py
+msgctxt "row action"
+msgid "View"
+msgstr "Ver"
+
+#: row_actions/actions.py
+msgctxt "row action"
+msgid "Delete"
+msgstr "Eliminar"
+
+#: row_actions/actions.py
+#, python-format
+msgid "Delete “%(object)s”? This cannot be undone."
+msgstr "¿Eliminar «%(object)s»? No se puede deshacer."
+
+#: row_actions/actions.py
+#, python-format
+msgid "Cannot delete “%(object)s”: %(objects)s depend on it."
+msgstr "No se puede eliminar «%(object)s»: %(objects)s dependen de él."
+
+#: row_actions/actions.py
+#, python-format
+msgid "Deleted “%(object)s”."
+msgstr "Se eliminó «%(object)s»."
+
+#: row_actions/mixins.py
+msgid "Actions"
+msgstr "Acciones"
+
+#: templates/django_admin_tables/columns_menu.html
+msgid "Columns"
+msgstr "Columnas"
+
+#: templates/django_admin_tables/columns_menu.html
+msgid "Show columns"
+msgstr "Mostrar columnas"
+
+#: templates/django_admin_tables/columns_menu.html
+msgid "(narrow screen)"
+msgstr "(pantalla estrecha)"
+
+#: templates/django_admin_tables/row_actions.html
+msgid "You have unsaved changes on this page: they will be lost. Continue?"
+msgstr "Hay cambios sin guardar en esta página: se perderán. ¿Continuar?"
+
+#: templates/django_admin_tables/row_actions.html
+msgid "The action could not be run."
+msgstr "No se pudo ejecutar la acción."

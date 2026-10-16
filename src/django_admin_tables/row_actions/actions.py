@@ -32,7 +32,7 @@ from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html_join
 from django.utils.safestring import SafeString, mark_safe
 from django.utils.text import capfirst
-from django.utils.translation import gettext
+from django.utils.translation import gettext, pgettext_lazy
 from django.utils.translation import gettext_lazy as _
 
 if TYPE_CHECKING:
@@ -92,7 +92,10 @@ def change_url(model_admin: Any, obj: Any) -> str | None:
         return None
 
 
-@row_action(permissions=["view"], description=_("View"), link=True)
+# Their own context: the admin's catalog has other words for "View".
+@row_action(
+    permissions=["view"], description=pgettext_lazy("row action", "View"), link=True
+)
 def view(model_admin: Any, request: HttpRequest, obj: Any) -> Any:
     """Open the row's change view (its own ``ModelAdmin``)."""
     return HttpResponseRedirect(change_url(model_admin, obj) or "")
@@ -100,7 +103,7 @@ def view(model_admin: Any, request: HttpRequest, obj: Any) -> Any:
 
 @row_action(
     permissions=["delete"],
-    description=_("Delete"),
+    description=pgettext_lazy("row action", "Delete"),
     confirmation=_("Delete “%(object)s”? This cannot be undone."),
 )
 def delete(

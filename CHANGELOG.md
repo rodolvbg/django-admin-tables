@@ -52,4 +52,5 @@ First release.
   `TabularInline` or a `StackedInline`, each off until its option is set.
 - django-unfold support: Unfold's radio and checkbox classes, link colors,
   and the "Columns" menu next to its "Filters" button.
+- Spanish translation.
 - Django 4.2 – 6.1, Python 3.10+.
