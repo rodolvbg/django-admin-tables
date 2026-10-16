@@ -8,7 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from gallery.models import Album, Image
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Error, Page, expect
 
 
 class _AdminE2ETestCase(StaticLiveServerTestCase):
@@ -231,6 +231,9 @@ class TestStrictContentSecurityPolicy(_AdminE2ETestCase):
     POLICY = (
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
     )
+    # Playwright's route.fetch() may resolve "localhost" to IPv6 (::1),
+    # where the test server doesn't listen.
+    host = "127.0.0.1"
 
     def setUp(self) -> None:
         super().setUp()
@@ -245,13 +248,21 @@ class TestStrictContentSecurityPolicy(_AdminE2ETestCase):
         )
 
         def add_policy(route):
-            response = route.fetch(max_redirects=0)
-            route.fulfill(
-                response=response,
-                headers={**response.headers, "content-security-policy": self.POLICY},
-            )
+            try:
+                response = route.fetch(max_redirects=0)
+                route.fulfill(
+                    response=response,
+                    headers={
+                        **response.headers,
+                        "content-security-policy": self.POLICY,
+                    },
+                )
+            except Error:
+                # The test ended, and its server or page closed, mid-request.
+                pass
 
         self.page.route(f"{self.live_server_url}/**", add_policy)
+        self.addCleanup(self.page.unroute_all, behavior="ignoreErrors")
 
     def test_menu_and_responsive_columns_still_hide(self):
         album = self.create_album(images=(("Beach", True),))
