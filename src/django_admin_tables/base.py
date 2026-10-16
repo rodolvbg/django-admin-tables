@@ -76,7 +76,15 @@ class TableTemplatesMixin(BaseModelAdmin):
         self, request: HttpRequest, obj: Model | None = None, **kwargs: Any
     ) -> type[BaseInlineFormSet]:
         formset_class = super().get_formset(request, obj, **kwargs)  # type: ignore[misc]
-        template: str = getattr(self, "template", "")
+        # django-admin-inline-controls renders the inline's own template
+        # inside its wrapper (and alone, when it refreshes the inline): wrap
+        # that one, so the extras are in both.
+        attribute = (
+            "inline_controls_inner_template"
+            if hasattr(self, "inline_controls_inner_template")
+            else "template"
+        )
+        template: str = getattr(self, attribute, "")
         # The admin builds its inlines for each request: their template can
         # change with the request. get_formset() may be called more than once.
         if template != self.tables_inline_template:
@@ -90,5 +98,5 @@ class TableTemplatesMixin(BaseModelAdmin):
                     "parent": select_template([template]),
                     **extras,
                 }
-                self.template = self.tables_inline_template
+                setattr(self, attribute, self.tables_inline_template)
         return formset_class

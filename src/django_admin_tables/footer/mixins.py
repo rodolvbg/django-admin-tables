@@ -99,9 +99,17 @@ class FooterRowsMixin(TableTemplatesMixin):
     def get_inline_footer_queryset(
         self, request: HttpRequest, formset: BaseInlineFormSet, scope: str
     ) -> QuerySet[Any]:
-        """What an inline's footer rows add up: its formset's rows, which are
-        every row of the parent object (django-admin-inline-controls narrows
-        them to its filters, or its page)."""
+        """What an inline's footer rows add up: the rows of the parent object.
+
+        With django-admin-inline-controls, ``"filtered"`` is every row
+        matching its filters, on every page, and ``"page"`` the rows shown.
+        """
+        controls = getattr(formset, "inline_controls", None)
+        filtered = getattr(controls, "filtered_queryset", None)
+        if filtered is not None:
+            if scope == FOOTER_PAGE:
+                return getattr(controls, "shown_queryset", filtered)
+            return filtered
         return formset.get_queryset()
 
     def inline_footer_rows(

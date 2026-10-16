@@ -352,7 +352,11 @@ class OrderLineInline(AdminTablesMixin, admin.TabularInline):
   - `"page"`: only the rows shown.
 
   In an inline, the rows of the object being edited
-  (`get_inline_footer_queryset()` to change it).
+  (`get_inline_footer_queryset()` to change it). With
+  [django-admin-inline-controls](https://github.com/rodolvbg/django-admin-inline-controls)
+  on the same inline, `"filtered"` is every row matching its filters, on
+  every page, `"page"` the rows shown, and the totals come back with the
+  refreshed inline. Neither package depends on the other.
 - **Where they go — rendered by the server, no JS:** the table's own
   `<tfoot>`, each value under its column, hidden along with it (hideable
   and responsive columns); the label spans the columns before the first
@@ -409,12 +413,14 @@ the same (or use `AdminTablesMixin` for both):
 | `django_admin_radio_select.widgets` / `.formsets` / `.mixins` | `django_admin_tables.radio_select.widgets` / `.formsets` / `.mixins` |
 | `django_admin_fk_links.admin_mixins` | `django_admin_tables.fk_links.mixins` |
 
-Their last releases depend on django-admin-tables and keep the old imports
-working, with a `DeprecationWarning`. `ForeignKeyLinkMixin` now goes before
-`admin.ModelAdmin` in the bases, as documented: on its own it's no longer
-a complete `ModelAdmin`. django-admin-fk-links didn't need
-`INSTALLED_APPS`; django-admin-tables does, for the radios' JS. Its floor is
-Django 4.2 and Python 3.10 (django-admin-fk-links declared Django 2.2+).
+Their last releases (django-admin-radio-select 0.1.3, django-admin-fk-links
+0.1.5) have no code: importing them raises an `ImportError` that says how
+to migrate. Pin the versions before those to keep using them until you do.
+`ForeignKeyLinkMixin` now goes before `admin.ModelAdmin` in the bases, as
+documented: on its own it's no longer a complete `ModelAdmin`.
+django-admin-fk-links didn't need `INSTALLED_APPS`; django-admin-tables
+does, for its templates and scripts. Its floor is Django 4.2 and Python
+3.10 (django-admin-fk-links declared Django 2.2+).
 
 ## Supported versions
 

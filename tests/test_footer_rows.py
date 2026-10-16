@@ -410,3 +410,52 @@ def test_inline_with_responsive_columns_only(admin_client, albums):
     assert "django-admin-tables-responsive-images-group" in content
     assert "<tfoot" not in content
     assert 'id="images-group"' in content
+
+
+class TestWithInlineControls:
+    """django-admin-inline-controls, recognized by its attributes: no
+    dependency either way."""
+
+    def test_querysets_follow_its_filters_and_page(self, albums):
+        from types import SimpleNamespace
+
+        class Inline(FooterRowsMixin, admin.TabularInline):
+            model = Image
+
+        inline = Inline(Album, admin.site)
+        filtered = Image.objects.filter(is_primary=True)
+        shown = filtered[:1]
+        formset = SimpleNamespace(
+            inline_controls=SimpleNamespace(
+                filtered_queryset=filtered, shown_queryset=shown
+            ),
+            get_queryset=Image.objects.all,
+        )
+
+        assert inline.get_inline_footer_queryset(None, formset, "filtered") is filtered
+        assert inline.get_inline_footer_queryset(None, formset, "page") is shown
+
+        # Its add view: no controls.
+        formset.inline_controls = None
+        assert inline.get_inline_footer_queryset(None, formset, "filtered").count() == 3
+
+    def test_wraps_the_inline_template_inside_its_wrapper(self, superuser):
+        class Inline(FooterRowsMixin, admin.TabularInline):
+            model = Image
+            footer_rows = [("Total", {"title": Count("pk")})]
+
+            def __init__(self, *args, **kwargs):
+                # What InlineControlsMixin does.
+                super().__init__(*args, **kwargs)
+                self.inline_controls_inner_template = self.template
+                self.template = "django_admin_inline_controls/inline.html"
+
+        inline = Inline(Album, admin.site)
+        inline.get_formset(get(superuser))
+
+        assert inline.template == "django_admin_inline_controls/inline.html"
+        assert inline.inline_controls_inner_template == (
+            "django_admin_tables/edit_inline.html"
+        )
+        parent = inline.django_admin_tables_inline["parent"]
+        assert parent.template.name == "admin/edit_inline/tabular.html"

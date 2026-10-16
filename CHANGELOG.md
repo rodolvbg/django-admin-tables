@@ -34,8 +34,10 @@ together, with hideable and responsive columns and footer rows.
   columns of the changelist and of inlines, as the table's own `<tfoot>`
   (a summary line on stacked inlines). Aggregates run in one query, on
   the filtered rows (`footer_scope = "filtered"`, every page) or the page
-  shown (`"page"`). From django-admin-inline-controls' footer rows. System
-  checks `django_admin_tables.E005` to `E007`.
+  shown (`"page"`). From django-admin-inline-controls' footer rows, which
+  they follow on its inlines (its filters and paging, its refreshes)
+  without depending on it. System checks `django_admin_tables.E005` to
+  `E007`.
 - Hideable and responsive columns work under a strict Content Security
   Policy: their CSS is set from a script, as constructed stylesheets, with
   no inline `<style>`.
