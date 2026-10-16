@@ -3,26 +3,26 @@
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.sites import UnfoldAdminSite
 
-from django_admin_rows import ExclusiveRadioFieldsMixin, ForeignKeyLinkMixin
+from django_admin_rows import AdminRowsMixin
 
 from .models import Album, AlbumStacked, Image
 
 site = UnfoldAdminSite(name="admin")
 
 
-class ImageTabularInline(ExclusiveRadioFieldsMixin, TabularInline):
+class ImageTabularInline(AdminRowsMixin, TabularInline):
     model = Image
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
 
 
-class ImageStackedInline(ExclusiveRadioFieldsMixin, StackedInline):
+class ImageStackedInline(AdminRowsMixin, StackedInline):
     model = Image
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
 
 
-class AlbumAdmin(ExclusiveRadioFieldsMixin, ModelAdmin):
+class AlbumAdmin(AdminRowsMixin, ModelAdmin):
     inlines = [ImageTabularInline]
     list_display = ("title", "is_featured")
     list_editable = ("is_featured",)
@@ -37,7 +37,7 @@ site.register(Album, AlbumAdmin)
 site.register(AlbumStacked, AlbumStackedAdmin)
 
 
-class ImageAdmin(ForeignKeyLinkMixin, ModelAdmin):
+class ImageAdmin(AdminRowsMixin, ModelAdmin):
     list_display = ("title", "album", "is_primary")
     list_display_foreign_key_links = ("album",)
 

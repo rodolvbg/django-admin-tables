@@ -37,6 +37,33 @@ INSTALLED_APPS = [
 ]
 ```
 
+## One mixin
+
+`AdminRowsMixin` brings every extra, on a `ModelAdmin`, a `TabularInline`
+or a `StackedInline`. Each one is off until you set its option:
+
+```python
+from django.contrib import admin
+from django_admin_rows import AdminRowsMixin
+
+
+@admin.register(Image)
+class ImageAdmin(AdminRowsMixin, admin.ModelAdmin):
+    list_display = ("title", "album", "is_primary")
+    list_editable = ("is_primary",)
+    list_display_foreign_key_links = ("album",)  # foreign key links
+    radio_select_exclusive_fields = ("is_primary",)  # exclusive radio fields
+
+
+class ImageInline(AdminRowsMixin, admin.TabularInline):
+    model = Image
+    radio_select_exclusive_fields = ("is_primary",)
+```
+
+Foreign key links only apply to a `ModelAdmin`'s changelist (an inline
+has no `list_display`). Each extra's mixin is available on its own too:
+`ExclusiveRadioFieldsMixin` and `ForeignKeyLinkMixin`.
+
 ## Exclusive radio fields
 
 An inline `BooleanField` column renders as independent checkboxes:
@@ -49,7 +76,7 @@ Image C    [ ]
 
 Nothing stops you from checking more than one — but often only one row
 should ever be true (the primary image, the default address, the featured
-item). `ExclusiveRadioFieldsMixin` renders that column as radio buttons
+item). `AdminRowsMixin` renders that column as radio buttons
 instead:
 
 ```text
@@ -73,12 +100,12 @@ independent `is_featured` column ("Cabin") is untouched:
 
 ```python
 from django.contrib import admin
-from django_admin_rows import ExclusiveRadioFieldsMixin
+from django_admin_rows import AdminRowsMixin
 
 from .models import Album, Image
 
 
-class ImageInline(ExclusiveRadioFieldsMixin, admin.TabularInline):
+class ImageInline(AdminRowsMixin, admin.TabularInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary",)
 
@@ -92,7 +119,7 @@ It works the same way with `StackedInline`, and several fields are
 independent groups:
 
 ```python
-class ImageInline(ExclusiveRadioFieldsMixin, admin.StackedInline):
+class ImageInline(AdminRowsMixin, admin.StackedInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary", "is_featured")
 ```
@@ -101,7 +128,7 @@ Compute the field list per request (and, for an inline or a change form,
 per object) instead of the class attribute:
 
 ```python
-class ImageInline(ExclusiveRadioFieldsMixin, admin.TabularInline):
+class ImageInline(AdminRowsMixin, admin.TabularInline):
     model = Image
 
     def get_radio_select_exclusive_fields(self, request, obj=None):
@@ -127,7 +154,7 @@ editable in the changelist with `list_editable` (the field must be in
 
 ```python
 @admin.register(Album)
-class AlbumAdmin(ExclusiveRadioFieldsMixin, admin.ModelAdmin):
+class AlbumAdmin(AdminRowsMixin, admin.ModelAdmin):
     list_display = ("title", "is_featured")
     list_editable = ("is_featured",)
     radio_select_exclusive_fields = ("is_featured",)
@@ -140,16 +167,16 @@ client-side sync, same server-side check on save:
 
 ## Foreign key links
 
-`ForeignKeyLinkMixin` turns the foreign keys you list into links to the
+`AdminRowsMixin` turns the foreign keys you list into links to the
 related object's change view:
 
 ```python
 from django.contrib import admin
-from django_admin_rows import ForeignKeyLinkMixin
+from django_admin_rows import AdminRowsMixin
 
 
 @admin.register(Book)
-class BookAdmin(ForeignKeyLinkMixin, admin.ModelAdmin):
+class BookAdmin(AdminRowsMixin, admin.ModelAdmin):
     list_display = ("title", "author")
     list_display_foreign_key_links = ("author",)
 ```
@@ -176,7 +203,7 @@ Override `get_foreign_key_link()` to change the markup — return safe HTML
 from django.utils.html import format_html
 
 
-class BookAdmin(ForeignKeyLinkMixin, admin.ModelAdmin):
+class BookAdmin(AdminRowsMixin, admin.ModelAdmin):
     list_display = ("title", "author")
     list_display_foreign_key_links = ("author",)
 
@@ -188,7 +215,7 @@ Or render it from a template, with `obj`, `related`, `url`, `field_name`
 and `link_class` in its context:
 
 ```python
-class BookAdmin(ForeignKeyLinkMixin, admin.ModelAdmin):
+class BookAdmin(AdminRowsMixin, admin.ModelAdmin):
     list_display = ("title", "author")
     list_display_foreign_key_links = ("author",)
     foreign_key_link_template = "admin/book_author_link.html"
@@ -209,7 +236,7 @@ To only add a CSS class, set `foreign_key_link_class = "my-link"`.
 ## Migrating from django-admin-radio-select or django-admin-fk-links
 
 Replace the package and the imports; the classes, options and behavior are
-the same:
+the same (or use `AdminRowsMixin` for both):
 
 | Before | After |
 |---|---|

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.apps import apps
-from django.contrib.admin import ModelAdmin
+from django.contrib.admin.options import BaseModelAdmin
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import format_html
@@ -20,17 +20,18 @@ if TYPE_CHECKING:
 UNFOLD_LINK_CLASS = "text-primary-600 dark:text-primary-500"
 
 
-class ForeignKeyLinkMixin(ModelAdmin):
+class ForeignKeyLinkMixin(BaseModelAdmin):
     """ModelAdmin mixin rendering chosen FK fields in list_display as links
     to their change view.
 
-    Inherits from ``ModelAdmin`` (rather than staying a bare mixin) purely
-    so ``self``/``super()`` are typed for free — ``get_list_display``,
-    ``list_editable``, ``model``, and ``admin_site`` all live there. Meant
-    to sit before ``admin.ModelAdmin`` in a subclass's bases, e.g.
-    ``class BookAdmin(ForeignKeyLinkMixin, admin.ModelAdmin)``; Python's
-    MRO resolves ``super()`` calls to the concrete ``ModelAdmin`` subclass
-    exactly as before, since both share the same underlying class.
+    Meant to sit before ``admin.ModelAdmin`` in a subclass's bases, e.g.
+    ``class BookAdmin(ForeignKeyLinkMixin, admin.ModelAdmin)``. Inheriting
+    from ``BaseModelAdmin`` — the common base of ``ModelAdmin`` and
+    ``InlineModelAdmin`` — types ``self``/``super()`` while still letting
+    ``AdminRowsMixin`` combine it with ``ExclusiveRadioFieldsMixin`` on an
+    inline too, where there's no ``list_display`` and it does nothing. The
+    ``# type: ignore[misc]`` on ``super().get_list_display()`` is because
+    only the concrete ``ModelAdmin`` declares it.
     """
 
     list_display_foreign_key_links: Sequence[str] = ()
@@ -79,14 +80,15 @@ class ForeignKeyLinkMixin(ModelAdmin):
         return format_html('<a href="{}">{}</a>', url, related)
 
     def get_list_display(self, request: HttpRequest) -> list[Any]:
-        base = list(super().get_list_display(request))
+        base = list(super().get_list_display(request))  # type: ignore[misc]
+        list_editable = getattr(self, "list_editable", ())
         result: list[Any] = []
 
         for item in base:
             if (
                 isinstance(item, str)
                 and item in self.get_list_display_foreign_key_links(request)
-                and item not in self.list_editable
+                and item not in list_editable
             ):
                 result.append(self._build_fk_link_callable(item))
             else:
