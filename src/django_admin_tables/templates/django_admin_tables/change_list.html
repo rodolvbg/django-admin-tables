@@ -1,0 +1,24 @@
+{% extends django_admin_tables_columns.parent %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'django_admin_tables/columns.css' %}">
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  {{ django_admin_tables_columns.config|json_script:"django-admin-tables-columns" }}
+  {# Not deferred: it hides the columns before the table is painted. #}
+  <script src="{% static 'django_admin_tables/columns.js' %}"></script>
+{% endblock %}
+
+{% block search %}
+  {{ block.super }}
+  {% if not django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
+{% endblock %}
+
+{% block filters %}
+  {{ block.super }}
+  {% if django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
+{% endblock %}

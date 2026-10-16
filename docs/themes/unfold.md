@@ -1,4 +1,4 @@
-# django-admin-rows with django-unfold
+# django-admin-tables with django-unfold
 
 ## Usage
 
@@ -11,23 +11,26 @@ Works with [django-unfold](https://unfoldadmin.com/) as it is, on its
 - the foreign key links get its link colors
   (`text-primary-600 dark:text-primary-500`) — Unfold's reset styles links
   like the text around them. Set `foreign_key_link_class` to use other
-  classes, or `""` for none.
+  classes, or `""` for none;
+- the hideable columns' "Columns" menu sits next to Unfold's "Filters"
+  button, styled like it, with Unfold's checkboxes.
 
 Both in light and dark mode. Tested with django-unfold 0.108.
 
 ```python
 from unfold.admin import ModelAdmin, TabularInline
-from django_admin_rows import ExclusiveRadioFieldsMixin, ForeignKeyLinkMixin
+from django_admin_tables import AdminTablesMixin
 
 
-class ImageInline(ExclusiveRadioFieldsMixin, TabularInline):
+class ImageInline(AdminTablesMixin, TabularInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary",)
 
 
-class ImageAdmin(ForeignKeyLinkMixin, ModelAdmin):
-    list_display = ("title", "album")
+class ImageAdmin(AdminTablesMixin, ModelAdmin):
+    list_display = ("title", "album", "is_featured")
     list_display_foreign_key_links = ("album",)
+    list_display_hideable = ("album", "is_featured")
 ```
 
 ## Screenshots
@@ -45,6 +48,12 @@ Foreign key links on a changelist, light and dark:
 ![Foreign key links on an Unfold changelist](unfold/fk-links-changelist.png)
 
 ![Foreign key links on an Unfold changelist, dark mode](unfold/fk-links-changelist-dark.png)
+
+The "Columns" menu, light, and dark with the album column hidden:
+
+![Hideable columns menu on an Unfold changelist](unfold/hideable-columns.png)
+
+![Hideable columns on an Unfold changelist, dark mode](unfold/hideable-columns-dark.png)
 
 ## Demo
 

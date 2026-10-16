@@ -5,7 +5,7 @@ needed, so this uses SimpleTestCase.
 
 from django.test import SimpleTestCase
 
-from django_admin_rows.radio_select.widgets import RadioCheckboxInput
+from django_admin_tables.radio_select.widgets import RadioCheckboxInput
 
 
 def _widget(**kwargs):
@@ -69,16 +69,18 @@ class RadioCheckboxInputTests(SimpleTestCase):
     def test_media(self):
         js_paths = [str(script) for script in _widget().media._js]
 
-        self.assertTrue(any("django_admin_rows/radio-select.js" in p for p in js_paths))
+        self.assertTrue(
+            any("django_admin_tables/radio-select.js" in p for p in js_paths)
+        )
 
 
 class ThemeClassesTests(SimpleTestCase):
     def test_theme_classes(self):
         from unittest import mock
 
-        from django_admin_rows.radio_select import widgets
+        from django_admin_tables.radio_select import widgets
 
-        installed = "django_admin_rows.radio_select.widgets.apps.is_installed"
+        installed = "django_admin_tables.radio_select.widgets.apps.is_installed"
 
         with self.subTest("none without Unfold"):
             with mock.patch(installed, return_value=False):

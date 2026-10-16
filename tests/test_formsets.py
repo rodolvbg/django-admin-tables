@@ -4,7 +4,7 @@ from django.test import RequestFactory
 from gallery.admin import ImageTabularInline
 from gallery.models import Album, Image
 
-from django_admin_rows import ExclusiveRadioFieldsMixin
+from django_admin_tables import ExclusiveRadioFieldsMixin
 
 pytestmark = pytest.mark.django_db
 

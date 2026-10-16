@@ -1,18 +1,21 @@
-# django-admin-rows
+# django-admin-tables
 
-[![Python tests](https://github.com/rodolvbg/django-admin-rows/actions/workflows/pytest.yml/badge.svg)](https://github.com/rodolvbg/django-admin-rows/actions/workflows/pytest.yml)
-[![JavaScript tests](https://github.com/rodolvbg/django-admin-rows/actions/workflows/js-tests.yml/badge.svg)](https://github.com/rodolvbg/django-admin-rows/actions/workflows/js-tests.yml)
-[![Current version on PyPI](https://img.shields.io/pypi/v/django-admin-rows.svg)](https://pypi.org/project/django-admin-rows/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/django-admin-rows)](https://pypi.org/project/django-admin-rows/)
-[![PyPI - Django Version](https://img.shields.io/pypi/djversions/django-admin-rows)](https://pypi.org/project/django-admin-rows/)
-[![Downloads](https://static.pepy.tech/personalized-badge/django-admin-rows?period=month&units=international_system&left_color=black&right_color=blue&left_text=Downloads/month)](https://pepy.tech/project/django-admin-rows)
+[![Python tests](https://github.com/rodolvbg/django-admin-tables/actions/workflows/pytest.yml/badge.svg)](https://github.com/rodolvbg/django-admin-tables/actions/workflows/pytest.yml)
+[![JavaScript tests](https://github.com/rodolvbg/django-admin-tables/actions/workflows/js-tests.yml/badge.svg)](https://github.com/rodolvbg/django-admin-tables/actions/workflows/js-tests.yml)
+[![Current version on PyPI](https://img.shields.io/pypi/v/django-admin-tables.svg)](https://pypi.org/project/django-admin-tables/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/django-admin-tables)](https://pypi.org/project/django-admin-tables/)
+[![PyPI - Django Version](https://img.shields.io/pypi/djversions/django-admin-tables)](https://pypi.org/project/django-admin-tables/)
+[![Downloads](https://static.pepy.tech/personalized-badge/django-admin-tables?period=month&units=international_system&left_color=black&right_color=blue&left_text=Downloads/month)](https://pepy.tech/project/django-admin-tables)
 
-Row-level extras for the Django admin, on changelists and inlines:
+Extras for the Django admin's tables — changelists and inlines — in one
+mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
 
 - **[Exclusive radio fields](#exclusive-radio-fields)** — a `BooleanField`
   column where only one row can be true, shown as radio buttons.
 - **[Foreign key links](#foreign-key-links)** — foreign keys in
   `list_display` as links to their change view.
+- **[Hideable columns](#hideable-columns)** — a "Columns" menu on the
+  changelist to hide or show columns, remembered per user.
 
 It brings together, and replaces,
 [django-admin-radio-select](https://pypi.org/project/django-admin-radio-select/)
@@ -22,47 +25,49 @@ and [django-admin-fk-links](https://pypi.org/project/django-admin-fk-links/)
 ## Install
 
 ```bash
-uv add django-admin-rows
+uv add django-admin-tables
 # or
-pip install django-admin-rows
+pip install django-admin-tables
 ```
 
-Add it to `INSTALLED_APPS` (so `django.contrib.staticfiles` finds the
-exclusive radio fields' JS):
+Add it to `INSTALLED_APPS` (so Django finds its templates, and
+`django.contrib.staticfiles` its JS and CSS):
 
 ```python
 INSTALLED_APPS = [
     ...,
-    "django_admin_rows",
+    "django_admin_tables",
 ]
 ```
 
 ## One mixin
 
-`AdminRowsMixin` brings every extra, on a `ModelAdmin`, a `TabularInline`
+`AdminTablesMixin` brings every extra, on a `ModelAdmin`, a `TabularInline`
 or a `StackedInline`. Each one is off until you set its option:
 
 ```python
 from django.contrib import admin
-from django_admin_rows import AdminRowsMixin
+from django_admin_tables import AdminTablesMixin
 
 
 @admin.register(Image)
-class ImageAdmin(AdminRowsMixin, admin.ModelAdmin):
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display = ("title", "album", "is_primary")
     list_editable = ("is_primary",)
     list_display_foreign_key_links = ("album",)  # foreign key links
+    list_display_hideable = ("album",)  # hideable columns
     radio_select_exclusive_fields = ("is_primary",)  # exclusive radio fields
 
 
-class ImageInline(AdminRowsMixin, admin.TabularInline):
+class ImageInline(AdminTablesMixin, admin.TabularInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary",)
 ```
 
-Foreign key links only apply to a `ModelAdmin`'s changelist (an inline
-has no `list_display`). Each extra's mixin is available on its own too:
-`ExclusiveRadioFieldsMixin` and `ForeignKeyLinkMixin`.
+Foreign key links and hideable columns only apply to a `ModelAdmin`'s
+changelist (an inline has no `list_display`). Each extra's mixin is
+available on its own too: `ExclusiveRadioFieldsMixin`,
+`ForeignKeyLinkMixin` and `HideableColumnsMixin`.
 
 ## Exclusive radio fields
 
@@ -76,7 +81,7 @@ Image C    [ ]
 
 Nothing stops you from checking more than one — but often only one row
 should ever be true (the primary image, the default address, the featured
-item). `AdminRowsMixin` renders that column as radio buttons
+item). `AdminTablesMixin` renders that column as radio buttons
 instead:
 
 ```text
@@ -100,12 +105,12 @@ independent `is_featured` column ("Cabin") is untouched:
 
 ```python
 from django.contrib import admin
-from django_admin_rows import AdminRowsMixin
+from django_admin_tables import AdminTablesMixin
 
 from .models import Album, Image
 
 
-class ImageInline(AdminRowsMixin, admin.TabularInline):
+class ImageInline(AdminTablesMixin, admin.TabularInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary",)
 
@@ -119,7 +124,7 @@ It works the same way with `StackedInline`, and several fields are
 independent groups:
 
 ```python
-class ImageInline(AdminRowsMixin, admin.StackedInline):
+class ImageInline(AdminTablesMixin, admin.StackedInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary", "is_featured")
 ```
@@ -128,7 +133,7 @@ Compute the field list per request (and, for an inline or a change form,
 per object) instead of the class attribute:
 
 ```python
-class ImageInline(AdminRowsMixin, admin.TabularInline):
+class ImageInline(AdminTablesMixin, admin.TabularInline):
     model = Image
 
     def get_radio_select_exclusive_fields(self, request, obj=None):
@@ -154,7 +159,7 @@ editable in the changelist with `list_editable` (the field must be in
 
 ```python
 @admin.register(Album)
-class AlbumAdmin(AdminRowsMixin, admin.ModelAdmin):
+class AlbumAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display = ("title", "is_featured")
     list_editable = ("is_featured",)
     radio_select_exclusive_fields = ("is_featured",)
@@ -167,16 +172,16 @@ client-side sync, same server-side check on save:
 
 ## Foreign key links
 
-`AdminRowsMixin` turns the foreign keys you list into links to the
+`AdminTablesMixin` turns the foreign keys you list into links to the
 related object's change view:
 
 ```python
 from django.contrib import admin
-from django_admin_rows import AdminRowsMixin
+from django_admin_tables import AdminTablesMixin
 
 
 @admin.register(Book)
-class BookAdmin(AdminRowsMixin, admin.ModelAdmin):
+class BookAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display = ("title", "author")
     list_display_foreign_key_links = ("author",)
 ```
@@ -203,7 +208,7 @@ Override `get_foreign_key_link()` to change the markup — return safe HTML
 from django.utils.html import format_html
 
 
-class BookAdmin(AdminRowsMixin, admin.ModelAdmin):
+class BookAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display = ("title", "author")
     list_display_foreign_key_links = ("author",)
 
@@ -215,7 +220,7 @@ Or render it from a template, with `obj`, `related`, `url`, `field_name`
 and `link_class` in its context:
 
 ```python
-class BookAdmin(AdminRowsMixin, admin.ModelAdmin):
+class BookAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display = ("title", "author")
     list_display_foreign_key_links = ("author",)
     foreign_key_link_template = "admin/book_author_link.html"
@@ -228,28 +233,64 @@ class BookAdmin(AdminRowsMixin, admin.ModelAdmin):
 
 To only add a CSS class, set `foreign_key_link_class = "my-link"`.
 
+## Hideable columns
+
+List the `list_display` entries the user can hide, and a "Columns" menu
+appears on the changelist:
+
+```python
+@admin.register(Image)
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
+    list_display = ("title", "album", "is_primary", "is_featured")
+    list_display_hideable = ("album", "is_primary", "is_featured")
+    list_display_hidden = ("is_featured",)  # hidden until shown
+```
+
+![The changelist's "Columns" menu](docs/screenshots/hideable-columns.png)
+
+The choice is per user, per model and per browser, kept in its
+`localStorage`: there's nothing to migrate or store on the server, and a
+hidden column is still there for sorting, actions and `list_editable`.
+`list_display_hidden` sets which columns start hidden, until the user
+chooses. Override `get_list_display_hideable(request)` or
+`get_list_display_hidden(request)` to choose them per request.
+
+Entries are named as in `list_display`: a field, or a method's or
+callable's name. A foreign key shown as a link keeps its field's name
+(`"album"`).
+
+The menu is added by rendering the changelist with
+`django_admin_tables/change_list.html`, which extends the template the
+admin would use — your `change_list_template` included — and adds the
+menu to its `search` block (in Unfold's, its `filters` block). System
+checks report a hideable entry that isn't in `list_display`
+(`django_admin_tables.E001`) or a hidden one that isn't hideable
+(`django_admin_tables.E002`).
+
 ## Themes
 
 - [django-unfold](docs/themes/unfold.md): works as it is, with Unfold's
-  radios and link colors.
+  radios, checkboxes, buttons and link colors.
 
 ## Migrating from django-admin-radio-select or django-admin-fk-links
 
 Replace the package and the imports; the classes, options and behavior are
-the same (or use `AdminRowsMixin` for both):
+the same (or use `AdminTablesMixin` for both):
 
 | Before | After |
 |---|---|
-| `pip install django-admin-radio-select` / `django-admin-fk-links` | `pip install django-admin-rows` |
-| `"django_admin_radio_select"` in `INSTALLED_APPS` | `"django_admin_rows"` |
-| `from django_admin_radio_select import ExclusiveRadioFieldsMixin` | `from django_admin_rows import ExclusiveRadioFieldsMixin` |
-| `from django_admin_fk_links import ForeignKeyLinkMixin` | `from django_admin_rows import ForeignKeyLinkMixin` |
-| `django_admin_radio_select.widgets` / `.formsets` / `.mixins` | `django_admin_rows.radio_select.widgets` / `.formsets` / `.mixins` |
-| `django_admin_fk_links.admin_mixins` | `django_admin_rows.fk_links.mixins` |
+| `pip install django-admin-radio-select` / `django-admin-fk-links` | `pip install django-admin-tables` |
+| `"django_admin_radio_select"` in `INSTALLED_APPS` | `"django_admin_tables"` |
+| `from django_admin_radio_select import ExclusiveRadioFieldsMixin` | `from django_admin_tables import ExclusiveRadioFieldsMixin` |
+| `from django_admin_fk_links import ForeignKeyLinkMixin` | `from django_admin_tables import ForeignKeyLinkMixin` |
+| `django_admin_radio_select.widgets` / `.formsets` / `.mixins` | `django_admin_tables.radio_select.widgets` / `.formsets` / `.mixins` |
+| `django_admin_fk_links.admin_mixins` | `django_admin_tables.fk_links.mixins` |
 
-Their last releases depend on django-admin-rows and keep the old imports
-working, with a `DeprecationWarning`. django-admin-fk-links didn't need
-`INSTALLED_APPS`; django-admin-rows does, for the radios' JS. Its floor is
+Their last releases depend on django-admin-tables and keep the old imports
+working, with a `DeprecationWarning`. `ForeignKeyLinkMixin` now goes before
+`admin.ModelAdmin` in the bases, as documented: on its own it's no longer
+a complete `ModelAdmin`. django-admin-fk-links didn't need
+`INSTALLED_APPS`; django-admin-tables does, for the radios' JS. Its floor is
 Django 4.2 and Python 3.10 (django-admin-fk-links declared Django 2.2+).
 
 ## Supported versions

@@ -1,0 +1,16 @@
+{% load i18n %}
+<details class="django-admin-tables-columns{% if columns.unfold %} django-admin-tables-columns--unfold{% endif %}">
+  <summary{% if columns.unfold %} class="bg-white border-base-200 hover:text-primary-600 dark:bg-base-900 dark:border-base-700 dark:hover:text-primary-500 border cursor-pointer flex font-medium gap-2 group items-center px-3 py-2 rounded-default shadow-xs text-sm"{% endif %}>
+    {% translate "Columns" %}
+    {% if columns.unfold %}<span class="material-symbols-outlined md-18 ml-auto" aria-hidden="true">view_column</span>{% endif %}
+  </summary>
+  <fieldset class="django-admin-tables-columns__menu">
+    <legend>{% translate "Show columns" %}</legend>
+    {% for column in columns.columns %}
+      <label>
+        <input type="checkbox" data-django-admin-tables-column="{{ column.class }}"{% if columns.checkbox_classes %} class="{{ columns.checkbox_classes }}"{% endif %}{% if not column.hidden %} checked{% endif %}>
+        {{ column.label }}
+      </label>
+    {% endfor %}
+  </fieldset>
+</details>

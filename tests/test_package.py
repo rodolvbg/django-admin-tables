@@ -1,15 +1,17 @@
-import django_admin_rows
-from django_admin_rows import (
-    AdminRowsMixin,
+import django_admin_tables
+from django_admin_tables import (
+    AdminTablesMixin,
     ExclusiveRadioFieldsMixin,
     ForeignKeyLinkMixin,
 )
-from django_admin_rows.fk_links import UNFOLD_LINK_CLASS
-from django_admin_rows.fk_links.mixins import ForeignKeyLinkMixin as LinksFromModule
-from django_admin_rows.mixins import AdminRowsMixin as RowsFromModule
-from django_admin_rows.radio_select import RadioCheckboxInput
-from django_admin_rows.radio_select.formsets import make_radio_select_exclusive_formset
-from django_admin_rows.radio_select.mixins import (
+from django_admin_tables.fk_links import UNFOLD_LINK_CLASS
+from django_admin_tables.fk_links.mixins import ForeignKeyLinkMixin as LinksFromModule
+from django_admin_tables.mixins import AdminTablesMixin as RowsFromModule
+from django_admin_tables.radio_select import RadioCheckboxInput
+from django_admin_tables.radio_select.formsets import (
+    make_radio_select_exclusive_formset,
+)
+from django_admin_tables.radio_select.mixins import (
     ExclusiveRadioFieldsMixin as RadioFromModule,
 )
 
@@ -17,17 +19,18 @@ from django_admin_rows.radio_select.mixins import (
 def test_public_api_is_importable_from_top_level_package():
     assert ExclusiveRadioFieldsMixin is RadioFromModule
     assert ForeignKeyLinkMixin is LinksFromModule
-    assert AdminRowsMixin is RowsFromModule
-    assert django_admin_rows.__all__ == [
-        "AdminRowsMixin",
+    assert AdminTablesMixin is RowsFromModule
+    assert django_admin_tables.__all__ == [
+        "AdminTablesMixin",
         "ExclusiveRadioFieldsMixin",
         "ForeignKeyLinkMixin",
+        "HideableColumnsMixin",
     ]
 
 
 def test_package_exposes_a_version():
-    assert isinstance(django_admin_rows.__version__, str)
-    assert django_admin_rows.__version__
+    assert isinstance(django_admin_tables.__version__, str)
+    assert django_admin_tables.__version__
 
 
 def test_internal_modules_are_importable():

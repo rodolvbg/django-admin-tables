@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from django_admin_rows import ForeignKeyLinkMixin
+from django_admin_tables import ForeignKeyLinkMixin
 
 from .core.admin import CustomBookAdmin
 from .core.models import Author, Book
@@ -172,12 +172,12 @@ def test_foreign_key_link_template():
 def test_link_class():
     from unittest import mock
 
-    from django_admin_rows.fk_links.mixins import UNFOLD_LINK_CLASS
+    from django_admin_tables.fk_links.mixins import UNFOLD_LINK_CLASS
 
     author = Author.objects.create(name="Le Guin")
     book = Book.objects.create(title="Earthsea", author=author)
     url = reverse("admin:core_author_change", args=[author.pk])
-    installed = "django_admin_rows.fk_links.mixins.apps.is_installed"
+    installed = "django_admin_tables.fk_links.mixins.apps.is_installed"
 
     class BookLinkAdmin(ForeignKeyLinkMixin, admin.ModelAdmin):
         list_display = ("title", "author")

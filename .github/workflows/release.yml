@@ -40,7 +40,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/project/django-admin-rows/
+      url: https://pypi.org/project/django-admin-tables/
 
     steps:
       - name: Retrieve release distributions

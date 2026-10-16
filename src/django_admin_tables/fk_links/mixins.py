@@ -8,6 +8,8 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import format_html
 
+from ..columns.mixins import FIELD_NAME_ATTR
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any
@@ -28,7 +30,7 @@ class ForeignKeyLinkMixin(BaseModelAdmin):
     ``class BookAdmin(ForeignKeyLinkMixin, admin.ModelAdmin)``. Inheriting
     from ``BaseModelAdmin`` — the common base of ``ModelAdmin`` and
     ``InlineModelAdmin`` — types ``self``/``super()`` while still letting
-    ``AdminRowsMixin`` combine it with ``ExclusiveRadioFieldsMixin`` on an
+    ``AdminTablesMixin`` combine it with ``ExclusiveRadioFieldsMixin`` on an
     inline too, where there's no ``list_display`` and it does nothing. The
     ``# type: ignore[misc]`` on ``super().get_list_display()`` is because
     only the concrete ``ModelAdmin`` declares it.
@@ -120,6 +122,8 @@ class ForeignKeyLinkMixin(BaseModelAdmin):
             return self.get_foreign_key_link(obj, field_name, related, url)
 
         fk_link.__name__ = f"{field_name}_link"
+        # Listed by its field's name (list_display_hideable, say).
+        setattr(fk_link, FIELD_NAME_ATTR, field_name)
         # short_description/admin_order_field are Django's own convention
         # for annotating a list_display callable; there's no stub for
         # attributes bolted onto a plain function like this.

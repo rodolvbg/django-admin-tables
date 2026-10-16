@@ -155,3 +155,31 @@ class TestChangelistExclusivity(_AdminE2ETestCase):
         checked_after = self.page.locator(f"{group_selector}:checked")
         expect(checked_after).to_have_count(1)
         assert checked_after.get_attribute("name") != checked_name_before
+
+
+class TestHideableColumns(_AdminE2ETestCase):
+    def test_hiding_a_column_from_the_menu_is_remembered(self):
+        self.create_album(images=(("Beach", True),))
+        self.login()
+        self.page.goto(f"{self.live_server_url}/admin/gallery/image/")
+
+        album_header = self.page.locator("#result_list th.column-album_link")
+        album_cell = self.page.locator("#result_list td.field-album_link")
+        featured_header = self.page.locator("#result_list th.column-is_featured")
+        # list_display_hidden: hidden until the user shows it.
+        expect(featured_header).to_be_hidden()
+        expect(album_header).to_be_visible()
+
+        self.page.get_by_text("Columns", exact=True).click()
+        self.page.get_by_label("Album").uncheck()
+
+        expect(album_header).to_be_hidden()
+        expect(album_cell).to_be_hidden()
+
+        self.page.reload()
+
+        expect(album_header).to_be_hidden()
+        expect(featured_header).to_be_hidden()
+        self.page.get_by_text("Columns", exact=True).click()
+        self.page.get_by_label("Is featured").check()
+        expect(featured_header).to_be_visible()

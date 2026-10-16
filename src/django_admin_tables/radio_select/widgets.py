@@ -49,7 +49,7 @@ class RadioCheckboxInput(CheckboxInput):
     """
 
     class Media:
-        js = ("django_admin_rows/radio-select.js",)
+        js = ("django_admin_tables/radio-select.js",)
 
     input_type = "radio"
 

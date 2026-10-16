@@ -1,0 +1,129 @@
+/* The "Columns" menu of HideableColumnsMixin. */
+
+.django-admin-tables-columns {
+    position: relative;
+    display: inline-block;
+}
+
+.django-admin-tables-columns > summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.django-admin-tables-columns > summary::-webkit-details-marker {
+    display: none;
+}
+
+.django-admin-tables-columns__menu {
+    position: absolute;
+    z-index: 30;
+    right: 0;
+    min-width: 12rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    margin: 4px 0 0;
+    padding: 8px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.django-admin-tables-columns__menu > legend {
+    /* Named for screen readers; the summary already says it. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.django-admin-tables-columns__menu > label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* django-unfold: next to its "Filters" button, with its colors. */
+
+.django-admin-tables-columns--unfold {
+    font-size: 0.875rem;
+}
+
+@media (min-width: 1024px) {
+    .django-admin-tables-columns--unfold {
+        margin-left: auto;
+    }
+
+    .filter-open-button ~ .django-admin-tables-columns--unfold {
+        margin-left: 0;
+    }
+}
+
+.django-admin-tables-columns--unfold .django-admin-tables-columns__menu {
+    border: 1px solid var(--color-base-200);
+    border-radius: var(--border-radius, 6px);
+    background: #fff;
+    color: var(--color-base-700);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+}
+
+.dark .django-admin-tables-columns--unfold .django-admin-tables-columns__menu {
+    border-color: var(--color-base-700);
+    background: var(--color-base-900);
+    color: var(--color-base-200);
+}
+
+.django-admin-tables-columns--unfold
+    .django-admin-tables-columns__menu
+    > label:hover {
+    background: var(--color-base-50);
+}
+
+.dark
+    .django-admin-tables-columns--unfold
+    .django-admin-tables-columns__menu
+    > label:hover {
+    background: var(--color-base-800);
+}
+
+/* Django's admin: under the search bar, at the right, like a button. */
+
+.django-admin-tables-columns:not(.django-admin-tables-columns--unfold) {
+    float: right;
+    margin: 0 0 10px 10px;
+}
+
+.django-admin-tables-columns:not(.django-admin-tables-columns--unfold)
+    > summary {
+    padding: 6px 12px;
+    border-radius: 4px;
+    background: var(--button-bg);
+    color: var(--button-fg);
+    font-size: 0.8125rem;
+}
+
+.django-admin-tables-columns:not(.django-admin-tables-columns--unfold)
+    > summary:hover,
+.django-admin-tables-columns:not(.django-admin-tables-columns--unfold)[open]
+    > summary {
+    background: var(--button-hover-bg);
+}
+
+.django-admin-tables-columns:not(.django-admin-tables-columns--unfold)
+    .django-admin-tables-columns__menu {
+    border: 1px solid var(--hairline-color);
+    border-radius: 4px;
+    background: var(--body-bg);
+    color: var(--body-fg);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+}
+
+.django-admin-tables-columns:not(.django-admin-tables-columns--unfold)
+    .django-admin-tables-columns__menu
+    > label:hover {
+    background: var(--selected-row);
+}

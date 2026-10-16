@@ -15,8 +15,8 @@ from django.test import RequestFactory, TestCase
 from gallery.admin import AlbumAdmin, ImageStackedInline, ImageTabularInline
 from gallery.models import Album, Image
 
-from django_admin_rows import ExclusiveRadioFieldsMixin
-from django_admin_rows.radio_select.widgets import RadioCheckboxInput
+from django_admin_tables import ExclusiveRadioFieldsMixin
+from django_admin_tables.radio_select.widgets import RadioCheckboxInput
 
 
 class ExclusiveRadioFieldsMixinTests(TestCase):
@@ -426,7 +426,7 @@ class ExclusiveRadioFieldsMixinTests(TestCase):
             formset_class = ImageTabularInline(Album, self.site).get_formset(request)
             js_paths = [str(s) for s in formset_class().media._js]
             self.assertTrue(
-                any("django_admin_rows/radio-select.js" in p for p in js_paths)
+                any("django_admin_tables/radio-select.js" in p for p in js_paths)
             )
 
         with self.subTest("absent from the inline formset when no field is radioized"):
@@ -438,7 +438,7 @@ class ExclusiveRadioFieldsMixinTests(TestCase):
             formset_class = PlainInline(Album, self.site).get_formset(request)
             js_paths = [str(s) for s in formset_class().media._js]
             self.assertFalse(
-                any("django_admin_rows/radio-select.js" in p for p in js_paths)
+                any("django_admin_tables/radio-select.js" in p for p in js_paths)
             )
 
         with self.subTest(
@@ -449,7 +449,7 @@ class ExclusiveRadioFieldsMixinTests(TestCase):
                 str(s) for s in formset_class(queryset=Album.objects.none()).media._js
             ]
             self.assertTrue(
-                any("django_admin_rows/radio-select.js" in p for p in js_paths)
+                any("django_admin_tables/radio-select.js" in p for p in js_paths)
             )
 
         with self.subTest(
@@ -457,5 +457,5 @@ class ExclusiveRadioFieldsMixinTests(TestCase):
         ):
             js_paths = [str(s) for s in AlbumAdmin(Album, self.site).media._js]
             self.assertFalse(
-                any("django_admin_rows/radio-select.js" in p for p in js_paths)
+                any("django_admin_tables/radio-select.js" in p for p in js_paths)
             )

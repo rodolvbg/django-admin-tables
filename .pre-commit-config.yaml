@@ -50,7 +50,7 @@ repos:
     types: [python]
     files: ^(src|example)/
     pass_filenames: false
-    args: [src/django_admin_rows, example]
+    args: [src/django_admin_tables, example]
 
 - repo: https://github.com/tox-dev/pyproject-fmt
   rev: d600c142bb19f521ae6a6a345f94a2efd7937759  # frozen: v2.26.0

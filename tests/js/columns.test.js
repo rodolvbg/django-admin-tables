@@ -1,0 +1,209 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// The production file is a plain script that runs once per page load:
+// each test sets the page up, then imports a fresh copy of it.
+const SCRIPT =
+    "../../src/django_admin_tables/static/django_admin_tables/columns.js";
+let storageKey;
+let counter = 0;
+
+function setUpPage({
+    hidden = [],
+    columns = ["album_link", "is_primary"],
+    config,
+} = {}) {
+    storageKey = `test:${++counter}`;
+    const script = document.createElement("script");
+    script.id = "django-admin-tables-columns";
+    script.type = "application/json";
+    script.textContent =
+        config ?? JSON.stringify({ storageKey, hidden, columns });
+    document.head.appendChild(script);
+
+    document.body.innerHTML = `
+        <details class="django-admin-tables-columns">
+            <summary>Columns</summary>
+            <fieldset class="django-admin-tables-columns__menu">
+                ${columns
+                    .map(
+                        (name) =>
+                            `<label><input type="checkbox" data-django-admin-tables-column="${name}" checked> ${name}</label>`,
+                    )
+                    .join("")}
+            </fieldset>
+        </details>
+        <p id="outside">outside</p>`;
+}
+
+async function runScript() {
+    vi.resetModules();
+    await import(SCRIPT);
+}
+
+function style() {
+    return document.getElementById("django-admin-tables-hidden-columns")
+        ?.textContent;
+}
+
+function checkbox(name) {
+    return document.querySelector(
+        `[data-django-admin-tables-column="${name}"]`,
+    );
+}
+
+function toggle(name) {
+    const input = checkbox(name);
+    input.checked = !input.checked;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+describe("columns.js", () => {
+    beforeEach(() => {
+        document.head.innerHTML = "";
+        window.localStorage.clear();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("does nothing without its config", async () => {
+        document.body.innerHTML = "";
+        await runScript();
+        expect(style()).toBeUndefined();
+    });
+
+    it("does nothing with a broken config", async () => {
+        setUpPage({ config: "{not json" });
+        await runScript();
+        expect(style()).toBeUndefined();
+    });
+
+    it("hides the admin's default hidden columns", async () => {
+        setUpPage({ hidden: ["is_primary"] });
+        await runScript();
+
+        expect(style()).toBe(
+            "#result_list .column-is_primary, #result_list .field-is_primary { display: none; }",
+        );
+        expect(checkbox("is_primary").checked).toBe(false);
+        expect(checkbox("album_link").checked).toBe(true);
+    });
+
+    it("shows every column when none is hidden", async () => {
+        setUpPage();
+        await runScript();
+        expect(style()).toBe("");
+    });
+
+    it("prefers the user's stored choice, ignoring unknown columns", async () => {
+        setUpPage({ hidden: ["is_primary"] });
+        window.localStorage.setItem(
+            storageKey,
+            JSON.stringify(["album_link", "gone"]),
+        );
+        await runScript();
+
+        expect(style()).toContain(".column-album_link");
+        expect(style()).not.toContain("is_primary");
+        expect(style()).not.toContain("gone");
+        expect(checkbox("is_primary").checked).toBe(true);
+    });
+
+    it("falls back to the default on a stored value that isn't a list", async () => {
+        setUpPage({ hidden: ["is_primary"] });
+        window.localStorage.setItem(storageKey, '"album_link"');
+        await runScript();
+        expect(style()).toContain(".column-is_primary");
+    });
+
+    it("hides and shows a column on toggle, and remembers it", async () => {
+        setUpPage();
+        await runScript();
+
+        toggle("album_link");
+        expect(style()).toContain(".field-album_link");
+        expect(JSON.parse(window.localStorage.getItem(storageKey))).toEqual([
+            "album_link",
+        ]);
+
+        toggle("album_link");
+        expect(style()).toBe("");
+        expect(JSON.parse(window.localStorage.getItem(storageKey))).toEqual([]);
+    });
+
+    it("ignores changes of other inputs", async () => {
+        setUpPage();
+        await runScript();
+        const other = document.createElement("input");
+        other.type = "checkbox";
+        document.body.appendChild(other);
+
+        other.dispatchEvent(new Event("change", { bubbles: true }));
+
+        expect(window.localStorage.getItem(storageKey)).toBeNull();
+    });
+
+    it("still works when storage is unavailable", async () => {
+        setUpPage({ hidden: ["is_primary"] });
+        vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+            throw new Error("blocked");
+        });
+        vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+            throw new Error("blocked");
+        });
+        await runScript();
+
+        expect(style()).toContain(".column-is_primary");
+        toggle("album_link");
+        expect(style()).toContain(".column-album_link");
+    });
+
+    it("escapes class names for the selector", async () => {
+        setUpPage({ hidden: ["a.b"], columns: ["a.b"] });
+        await runScript();
+        expect(style()).toContain(".column-a\\.b");
+    });
+
+    it("uses CSS.escape when the browser has it", async () => {
+        setUpPage({ hidden: ["a.b"], columns: ["a.b"] });
+        window.CSS = { escape: () => "escaped" };
+        try {
+            await runScript();
+        } finally {
+            delete window.CSS;
+        }
+        expect(style()).toContain(".column-escaped");
+    });
+
+    it("waits for the page when it's still loading", async () => {
+        setUpPage({ hidden: ["is_primary"] });
+        vi.spyOn(document, "readyState", "get").mockReturnValue("loading");
+        await runScript();
+
+        expect(style()).toContain(".column-is_primary");
+        expect(checkbox("is_primary").checked).toBe(true);
+
+        document.dispatchEvent(new Event("DOMContentLoaded"));
+        expect(checkbox("is_primary").checked).toBe(false);
+    });
+
+    it("closes the menu on a click outside it, or on Escape", async () => {
+        setUpPage();
+        await runScript();
+        const menu = document.querySelector("details");
+
+        menu.open = true;
+        checkbox("album_link").click();
+        expect(menu.open).toBe(true);
+        document.getElementById("outside").click();
+        expect(menu.open).toBe(false);
+
+        menu.open = true;
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+        expect(menu.open).toBe(true);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        expect(menu.open).toBe(false);
+        expect(document.activeElement).toBe(menu.querySelector("summary"));
+    });
+});

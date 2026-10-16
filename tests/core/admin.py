@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from django_admin_rows import ForeignKeyLinkMixin
+from django_admin_tables import ForeignKeyLinkMixin
 
 from .models import Author, Book
 

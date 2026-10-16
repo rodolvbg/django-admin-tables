@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // for its side effect is enough to register the same delegated
 // `change` listener a real page load would, on the same `document`
 // jsdom provides here.
-import "../../src/django_admin_rows/static/django_admin_rows/radio-select.js";
+import "../../src/django_admin_tables/static/django_admin_tables/radio-select.js";
 
 function addRadio({ name, group, checked = false }) {
     const input = document.createElement("input");

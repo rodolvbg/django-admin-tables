@@ -4,12 +4,12 @@ from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
 from gallery.models import Album, Image
 
-from django_admin_rows import (
-    AdminRowsMixin,
+from django_admin_tables import (
+    AdminTablesMixin,
     ExclusiveRadioFieldsMixin,
     ForeignKeyLinkMixin,
 )
-from django_admin_rows.radio_select import RadioCheckboxInput
+from django_admin_tables.radio_select import RadioCheckboxInput
 
 pytestmark = pytest.mark.django_db
 
@@ -21,21 +21,21 @@ def request_():
     return request
 
 
-class ImageAdmin(AdminRowsMixin, admin.ModelAdmin):
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display = ("title", "album", "is_primary")
     list_editable = ("is_primary",)
     list_display_foreign_key_links = ("album",)
     radio_select_exclusive_fields = ("is_primary",)
 
 
-class ImageInline(AdminRowsMixin, admin.TabularInline):
+class ImageInline(AdminTablesMixin, admin.TabularInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary",)
 
 
 def test_combines_both_mixins():
-    assert issubclass(AdminRowsMixin, ForeignKeyLinkMixin)
-    assert issubclass(AdminRowsMixin, ExclusiveRadioFieldsMixin)
+    assert issubclass(AdminTablesMixin, ForeignKeyLinkMixin)
+    assert issubclass(AdminTablesMixin, ExclusiveRadioFieldsMixin)
 
 
 def test_model_admin_gets_links_and_radios(request_):

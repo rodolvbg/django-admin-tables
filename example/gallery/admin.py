@@ -1,24 +1,24 @@
 from django.contrib import admin
 
-from django_admin_rows import AdminRowsMixin
+from django_admin_tables import AdminTablesMixin
 
 from .models import Album, AlbumStacked, Image
 
 
-class ImageTabularInline(AdminRowsMixin, admin.TabularInline):
+class ImageTabularInline(AdminTablesMixin, admin.TabularInline):
     model = Image
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
 
 
-class ImageStackedInline(AdminRowsMixin, admin.StackedInline):
+class ImageStackedInline(AdminTablesMixin, admin.StackedInline):
     model = Image
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
 
 
 @admin.register(Album)
-class AlbumAdmin(AdminRowsMixin, admin.ModelAdmin):
+class AlbumAdmin(AdminTablesMixin, admin.ModelAdmin):
     inlines = [ImageTabularInline]
     list_display = ("title", "is_featured")
     list_editable = ("is_featured",)
@@ -31,8 +31,10 @@ class AlbumStackedAdmin(admin.ModelAdmin):
 
 
 @admin.register(Image)
-class ImageAdmin(AdminRowsMixin, admin.ModelAdmin):
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     """Each image's album, as a link to the album's change view."""
 
-    list_display = ("title", "album", "is_primary")
+    list_display = ("title", "album", "is_primary", "is_featured")
     list_display_foreign_key_links = ("album",)
+    list_display_hideable = ("album", "is_primary", "is_featured")
+    list_display_hidden = ("is_featured",)

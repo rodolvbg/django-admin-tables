@@ -7,7 +7,9 @@ export default defineConfig({
         coverage: {
             provider: "v8",
             reporter: [["text", { skipFull: true }]],
-            include: ["src/django_admin_rows/static/django_admin_rows/**/*.js"],
+            include: [
+                "src/django_admin_tables/static/django_admin_tables/**/*.js",
+            ],
         },
     },
 });

@@ -1,8 +1,8 @@
 {
-    "name": "django-admin-rows",
+    "name": "django-admin-tables",
     "private": true,
     "type": "module",
-    "description": "JS test tooling for django-admin-rows",
+    "description": "JS test tooling for django-admin-tables",
     "scripts": {
         "test": "vitest run",
         "test:watch": "vitest",
