@@ -21,11 +21,6 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
 - **[Footer rows](#footer-rows)** — totals, averages… below the columns,
   on the changelist and in inlines.
 
-It brings together, and replaces,
-[django-admin-radio-select](https://pypi.org/project/django-admin-radio-select/)
-and [django-admin-fk-links](https://pypi.org/project/django-admin-fk-links/)
-— see [Migrating](#migrating-from-django-admin-radio-select-or-django-admin-fk-links).
-
 ## Install
 
 ```bash
@@ -398,29 +393,6 @@ blocks.
 
 - [django-unfold](docs/themes/unfold.md): works as it is, with Unfold's
   radios, checkboxes, buttons and link colors.
-
-## Migrating from django-admin-radio-select or django-admin-fk-links
-
-Replace the package and the imports; the classes, options and behavior are
-the same (or use `AdminTablesMixin` for both):
-
-| Before | After |
-|---|---|
-| `pip install django-admin-radio-select` / `django-admin-fk-links` | `pip install django-admin-tables` |
-| `"django_admin_radio_select"` in `INSTALLED_APPS` | `"django_admin_tables"` |
-| `from django_admin_radio_select import ExclusiveRadioFieldsMixin` | `from django_admin_tables import ExclusiveRadioFieldsMixin` |
-| `from django_admin_fk_links import ForeignKeyLinkMixin` | `from django_admin_tables import ForeignKeyLinkMixin` |
-| `django_admin_radio_select.widgets` / `.formsets` / `.mixins` | `django_admin_tables.radio_select.widgets` / `.formsets` / `.mixins` |
-| `django_admin_fk_links.admin_mixins` | `django_admin_tables.fk_links.mixins` |
-
-Their last releases (django-admin-radio-select 0.1.3, django-admin-fk-links
-0.1.5) have no code: importing them raises an `ImportError` that says how
-to migrate. Pin the versions before those to keep using them until you do.
-`ForeignKeyLinkMixin` now goes before `admin.ModelAdmin` in the bases, as
-documented: on its own it's no longer a complete `ModelAdmin`.
-django-admin-fk-links didn't need `INSTALLED_APPS`; django-admin-tables
-does, for its templates and scripts. Its floor is Django 4.2 and Python
-3.10 (django-admin-fk-links declared Django 2.2+).
 
 ## Supported versions
 

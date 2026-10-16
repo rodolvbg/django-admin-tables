@@ -7,21 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - Unreleased
 
-First release: django-admin-radio-select and django-admin-fk-links,
-together, with hideable and responsive columns and footer rows.
+First release.
 
 ### Added
 
-- `ExclusiveRadioFieldsMixin` (`django_admin_tables.radio_select`), from
-  django-admin-radio-select 0.1.2: `BooleanField` columns shown as radio
+- `ExclusiveRadioFieldsMixin` (`django_admin_tables.radio_select`):
+  `BooleanField` columns shown as radio
   buttons, exclusive across the rows of an inline or of the changelist's
   `list_editable`, checked on the server too.
-- `ForeignKeyLinkMixin` (`django_admin_tables.fk_links`), from
-  django-admin-fk-links 0.1.4: foreign keys in `list_display` as links to
-  their change view, with `get_foreign_key_link()`,
-  `foreign_key_link_template` and `foreign_key_link_class`. It inherits
-  from `BaseModelAdmin` instead of `ModelAdmin`, so it can be combined on
-  an inline too: use it before `admin.ModelAdmin` in the bases.
+- `ForeignKeyLinkMixin` (`django_admin_tables.fk_links`): foreign keys in
+  `list_display` as links to their change view, with
+  `get_foreign_key_link()`, `foreign_key_link_template` and
+  `foreign_key_link_class`.
 - `HideableColumnsMixin` (`django_admin_tables.columns`): a "Columns" menu
   on the changelist to hide or show the columns in `list_display_hideable`
   (`list_display_hidden` start hidden), remembered per user and model in
@@ -34,9 +31,9 @@ together, with hideable and responsive columns and footer rows.
   columns of the changelist and of inlines, as the table's own `<tfoot>`
   (a summary line on stacked inlines). Aggregates run in one query, on
   the filtered rows (`footer_scope = "filtered"`, every page) or the page
-  shown (`"page"`). From django-admin-inline-controls' footer rows, which
-  they follow on its inlines (its filters and paging, its refreshes)
-  without depending on it. System checks `django_admin_tables.E005` to
+  shown (`"page"`). On django-admin-inline-controls' inlines they follow
+  its filters, paging and refreshes, without depending on it. System
+  checks `django_admin_tables.E005` to
   `E007`.
 - Hideable and responsive columns work under a strict Content Security
   Policy: their CSS is set from a script, as constructed stylesheets, with
