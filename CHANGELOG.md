@@ -1,0 +1,23 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.0] - Unreleased
+
+First release: django-admin-radio-select and django-admin-fk-links, together.
+
+### Added
+
+- `ExclusiveRadioFieldsMixin` (`django_admin_rows.radio_select`), from
+  django-admin-radio-select 0.1.2: `BooleanField` columns shown as radio
+  buttons, exclusive across the rows of an inline or of the changelist's
+  `list_editable`, checked on the server too.
+- `ForeignKeyLinkMixin` (`django_admin_rows.fk_links`), from
+  django-admin-fk-links 0.1.4: foreign keys in `list_display` as links to
+  their change view, with `get_foreign_key_link()`,
+  `foreign_key_link_template` and `foreign_key_link_class`.
+- django-unfold support for both: Unfold's radio classes and link colors.
+- Django 4.2 – 6.1, Python 3.10+.
