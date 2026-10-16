@@ -3,22 +3,25 @@
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'django_admin_tables/columns.css' %}">
+  {% if django_admin_tables_columns.columns %}<link rel="stylesheet" href="{% static 'django_admin_tables/columns.css' %}">{% endif %}
+  {% if django_admin_tables_columns.responsive %}{% include "django_admin_tables/responsive_style.html" with rules=django_admin_tables_columns.responsive scope="#result_list" %}{% endif %}
 {% endblock %}
 
 {% block extrahead %}
   {{ block.super }}
-  {{ django_admin_tables_columns.config|json_script:"django-admin-tables-columns" }}
-  {# Not deferred: it hides the columns before the table is painted. #}
-  <script src="{% static 'django_admin_tables/columns.js' %}"></script>
+  {% if django_admin_tables_columns.columns %}
+    {{ django_admin_tables_columns.config|json_script:"django-admin-tables-columns" }}
+    {# Not deferred: it hides the columns before the table is painted. #}
+    <script src="{% static 'django_admin_tables/columns.js' %}"></script>
+  {% endif %}
 {% endblock %}
 
 {% block search %}
   {{ block.super }}
-  {% if not django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
+  {% if django_admin_tables_columns.columns and not django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
 {% endblock %}
 
 {% block filters %}
   {{ block.super }}
-  {% if django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
+  {% if django_admin_tables_columns.columns and django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
 {% endblock %}

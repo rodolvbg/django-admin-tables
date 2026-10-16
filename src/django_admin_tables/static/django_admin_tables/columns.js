@@ -76,6 +76,33 @@
             );
         });
 
+        // A column the viewport hides (responsive_columns) can't be shown
+        // from the menu while it's that narrow: unchecked, disabled, noted.
+        document
+            .querySelectorAll(`${INPUT}[data-django-admin-tables-max-width]`)
+            .forEach((input) => {
+                if (typeof window.matchMedia !== "function") {
+                    return;
+                }
+                var query = window.matchMedia(
+                    `(max-width: ${input.dataset.djangoAdminTablesMaxWidth}px)`,
+                );
+                var note = input.parentElement.querySelector(
+                    ".django-admin-tables-columns__note",
+                );
+                function update() {
+                    input.disabled = query.matches;
+                    input.checked =
+                        !query.matches &&
+                        !hidden.includes(input.dataset.djangoAdminTablesColumn);
+                    if (note) {
+                        note.hidden = !query.matches;
+                    }
+                }
+                update();
+                query.addEventListener("change", update);
+            });
+
         document.addEventListener("change", (event) => {
             var input = event.target;
             if (!input.matches?.(INPUT)) {

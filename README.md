@@ -16,6 +16,8 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
   `list_display` as links to their change view.
 - **[Hideable columns](#hideable-columns)** — a "Columns" menu on the
   changelist to hide or show columns, remembered per user.
+- **[Responsive columns](#responsive-columns)** — columns hidden on
+  narrow screens, on the changelist and in tabular inlines.
 
 It brings together, and replaces,
 [django-admin-radio-select](https://pypi.org/project/django-admin-radio-select/)
@@ -56,18 +58,21 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_editable = ("is_primary",)
     list_display_foreign_key_links = ("album",)  # foreign key links
     list_display_hideable = ("album",)  # hideable columns
+    responsive_columns = {"album": "md"}  # responsive columns
     radio_select_exclusive_fields = ("is_primary",)  # exclusive radio fields
 
 
 class ImageInline(AdminTablesMixin, admin.TabularInline):
     model = Image
     radio_select_exclusive_fields = ("is_primary",)
+    responsive_columns = {"is_featured": "md"}
 ```
 
 Foreign key links and hideable columns only apply to a `ModelAdmin`'s
 changelist (an inline has no `list_display`). Each extra's mixin is
 available on its own too: `ExclusiveRadioFieldsMixin`,
-`ForeignKeyLinkMixin` and `HideableColumnsMixin`.
+`ForeignKeyLinkMixin` and `HideableColumnsMixin` (hideable and responsive
+columns).
 
 ## Exclusive radio fields
 
@@ -266,6 +271,49 @@ menu to its `search` block (in Unfold's, its `filters` block). System
 checks report a hideable entry that isn't in `list_display`
 (`django_admin_tables.E001`) or a hidden one that isn't hideable
 (`django_admin_tables.E002`).
+
+## Responsive columns
+
+Map columns to the viewport width under which they're hidden, on a
+`ModelAdmin`'s changelist (`list_display` names) or a `TabularInline`
+(field names):
+
+```python
+@admin.register(Image)
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
+    list_display = ("title", "album", "is_primary", "created")
+    responsive_columns = {"album": "md", "created": "lg"}
+
+
+class ImageInline(AdminTablesMixin, admin.TabularInline):
+    model = Image
+    responsive_columns = {"is_featured": "md"}
+```
+
+A width is a breakpoint's name — `"sm"` (640px), `"md"` (768px), `"lg"`
+(1024px), `"xl"` (1280px), `"2xl"` (1536px), Tailwind's, which
+django-unfold uses — or pixels (`{"created": 900}`): the column is hidden
+when the viewport is narrower than that. It's plain CSS media queries, with
+no JavaScript: it follows the window as it's resized or the phone turned.
+Override `get_responsive_columns(request, obj=None)` to choose them per
+request.
+
+With the [Columns menu](#hideable-columns), a column the screen hides is
+unchecked and disabled there, noted "(narrow screen)", and gets the user's
+choice back on a wider screen:
+
+![A column hidden on a phone, noted in the Columns menu](docs/screenshots/responsive-columns.png)
+
+In an inline, a hidden column's field is still in the form, with its
+value: hide columns that are optional or read-only, since a required one
+can't be filled in on a narrow screen. The inline is rendered with
+`django_admin_tables/edit_inline.html`, which adds the media queries and
+includes the inline's own `template`. System checks report an unknown
+width (`django_admin_tables.E003`) and, on a `ModelAdmin`, a column that
+isn't in `list_display` (`django_admin_tables.E004`).
+
+The rules are an inline `<style>`: with a Content Security Policy, allow
+it in `style-src`.
 
 ## Themes
 

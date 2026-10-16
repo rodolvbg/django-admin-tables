@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - Unreleased
 
 First release: django-admin-radio-select and django-admin-fk-links,
-together, with hideable columns.
+together, with hideable and responsive columns.
 
 ### Added
 
@@ -26,6 +26,10 @@ together, with hideable columns.
   on the changelist to hide or show the columns in `list_display_hideable`
   (`list_display_hidden` start hidden), remembered per user and model in
   the browser. System checks `django_admin_tables.E001` and `E002`.
+- `responsive_columns` (same mixin): columns hidden below a viewport width
+  (`"sm"`…`"2xl"` or pixels), with CSS media queries, on the changelist
+  and in tabular inlines; disabled in the "Columns" menu while hidden.
+  System checks `django_admin_tables.E003` and `E004`.
 - `AdminTablesMixin`: every extra in one mixin, on a `ModelAdmin`, a
   `TabularInline` or a `StackedInline`, each off until its option is set.
 - django-unfold support: Unfold's radio and checkbox classes, link colors,

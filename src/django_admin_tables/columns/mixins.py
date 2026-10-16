@@ -10,10 +10,14 @@ from django.template.loader import select_template
 from django.template.response import TemplateResponse
 from django.utils.text import capfirst
 
+from .responsive import BREAKPOINTS, Breakpoint, max_width, media_rules
+
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from django.contrib.admin.views.main import ChangeList
+    from django.db.models import Model
+    from django.forms.models import BaseInlineFormSet
     from django.http import HttpRequest, HttpResponse
 
 #: Attribute naming the field behind a generated ``list_display`` callable
@@ -47,19 +51,25 @@ def checkbox_classes() -> str:
 
 
 class HideableColumnsMixin(BaseModelAdmin):
-    """``ModelAdmin`` mixin adding a "Columns" menu to the changelist, to
-    hide or show the columns listed in ``list_display_hideable``.
+    """Mixin hiding columns, for a ``ModelAdmin`` or a ``TabularInline``:
 
-    The choice is per user and per model, kept in the browser's
-    ``localStorage``: hiding is done client-side, on the ``column-<name>``
-    and ``field-<name>`` classes the admin gives each column's cells, so
-    sorting, actions and ``list_editable`` work as they do without it.
+    - ``list_display_hideable``: a "Columns" menu on the changelist, to
+      hide or show those columns. The choice is per user and per model,
+      kept in the browser's ``localStorage``.
+    - ``responsive_columns``: columns hidden below a viewport width, on the
+      changelist (``list_display`` names) or in a tabular inline (field
+      names), with CSS media queries.
+
+    Both hide on the ``column-<name>`` and ``field-<name>`` classes the
+    admin gives each column's cells, so sorting, actions, ``list_editable``
+    and the inline's form work as they do without it.
 
     The changelist is rendered with ``hideable_columns_template``, which
     extends the template the admin would use (``change_list_template``
-    included) and adds the menu to its blocks. The ``# type: ignore[misc]``
-    on ``super().changelist_view()`` is because only the concrete
-    ``ModelAdmin`` declares it.
+    included) and adds to its blocks; an inline with
+    ``responsive_columns_inline_template``, which includes its own. The
+    ``# type: ignore[misc]`` on ``super()`` calls is because only the
+    concrete ``ModelAdmin``/``InlineModelAdmin`` declare them.
     """
 
     #: ``list_display`` entries the user can hide: field names, or the
@@ -67,13 +77,23 @@ class HideableColumnsMixin(BaseModelAdmin):
     list_display_hideable: Sequence[str] = ()
     #: Entries of ``list_display_hideable`` hidden until the user shows them.
     list_display_hidden: Sequence[str] = ()
+    #: Columns hidden below a viewport width: ``{"album": "md"}``. Widths
+    #: are a name of ``BREAKPOINTS`` (``"sm"``, ``"md"``, ``"lg"``, ``"xl"``,
+    #: ``"2xl"``) or pixels.
+    responsive_columns: Mapping[str, Breakpoint] = {}
     hideable_columns_template = "django_admin_tables/change_list.html"
+    responsive_columns_inline_template = "django_admin_tables/edit_inline.html"
 
     def get_list_display_hideable(self, request: HttpRequest) -> Sequence[str]:
         return self.list_display_hideable
 
     def get_list_display_hidden(self, request: HttpRequest) -> Sequence[str]:
         return self.list_display_hidden
+
+    def get_responsive_columns(
+        self, request: HttpRequest, obj: Model | None = None
+    ) -> Mapping[str, Breakpoint]:
+        return self.responsive_columns
 
     def get_hideable_columns(
         self, request: HttpRequest, cl: ChangeList
@@ -83,6 +103,7 @@ class HideableColumnsMixin(BaseModelAdmin):
         if not hideable:
             return []
         hidden = set(self.get_list_display_hidden(request))
+        responsive = self.get_responsive_columns(request)
         columns = []
         for index, item in enumerate(cl.list_display):
             name = column_name(item)
@@ -96,6 +117,9 @@ class HideableColumnsMixin(BaseModelAdmin):
                         str(label_for_field(item, cl.model, model_admin=self))
                     ),
                     "hidden": name in hidden,
+                    "max_width": (
+                        max_width(responsive[name]) if name in responsive else None
+                    ),
                 }
             )
         return columns
@@ -111,7 +135,14 @@ class HideableColumnsMixin(BaseModelAdmin):
         if cl is None:
             return response
         columns = self.get_hideable_columns(request, cl)
-        if not columns:
+        responsive = media_rules(
+            self.get_responsive_columns(request),
+            (
+                (column_name(item), column_class(item, index))
+                for index, item in enumerate(cl.list_display)
+            ),
+        )
+        if not columns and not responsive:
             return response
 
         opts = cl.model._meta
@@ -122,6 +153,7 @@ class HideableColumnsMixin(BaseModelAdmin):
                 [template_name] if isinstance(template_name, str) else template_name
             ),
             "columns": columns,
+            "responsive": responsive,
             "unfold": apps.is_installed("unfold"),
             "checkbox_classes": checkbox_classes(),
             "config": {
@@ -136,15 +168,56 @@ class HideableColumnsMixin(BaseModelAdmin):
         response.template_name = self.hideable_columns_template
         return response
 
+    def get_formset(
+        self, request: HttpRequest, obj: Model | None = None, **kwargs: Any
+    ) -> type[BaseInlineFormSet]:
+        formset_class = super().get_formset(request, obj, **kwargs)  # type: ignore[misc]
+        responsive = self.get_responsive_columns(request, obj)
+        template: str = getattr(self, "template", "")
+        # The admin builds its inlines for each request: their template can
+        # change with the request. get_formset() may be called more than once.
+        if responsive and template != self.responsive_columns_inline_template:
+            self.django_admin_tables_inline = {
+                "parent": select_template([template]),
+                "responsive": media_rules(
+                    responsive, ((name, name) for name in responsive)
+                ),
+            }
+            self.template = self.responsive_columns_inline_template
+        return formset_class
+
     def check(self, **kwargs: Any) -> list[checks.CheckMessage]:
         return [*super().check(**kwargs), *self._check_hideable_columns()]
 
     def _check_hideable_columns(self) -> list[checks.CheckMessage]:
+        errors: list[checks.CheckMessage] = []
+        for name, breakpoint in self.responsive_columns.items():
+            try:
+                max_width(breakpoint)
+            except ValueError:
+                errors.append(
+                    checks.Error(
+                        f"'{name}' in responsive_columns has an unknown "
+                        f"breakpoint, {breakpoint!r}: use one of "
+                        f"{', '.join(BREAKPOINTS)}, or pixels.",
+                        obj=self.__class__,
+                        id="django_admin_tables.E003",
+                    )
+                )
         list_display = getattr(self, "list_display", None)
         if list_display is None:  # An inline: there's no changelist.
-            return []
+            return errors
         listed = {column_name(item) for item in list_display}
-        errors: list[checks.CheckMessage] = [
+        errors += [
+            checks.Error(
+                f"'{name}' in responsive_columns isn't in list_display.",
+                obj=self.__class__,
+                id="django_admin_tables.E004",
+            )
+            for name in self.responsive_columns
+            if name not in listed
+        ]
+        errors += [
             checks.Error(
                 f"'{name}' in list_display_hideable isn't in list_display.",
                 obj=self.__class__,

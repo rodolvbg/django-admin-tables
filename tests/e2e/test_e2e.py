@@ -183,3 +183,42 @@ class TestHideableColumns(_AdminE2ETestCase):
         self.page.get_by_text("Columns", exact=True).click()
         self.page.get_by_label("Is featured").check()
         expect(featured_header).to_be_visible()
+
+
+class TestResponsiveColumns(_AdminE2ETestCase):
+    def test_changelist_column_hidden_on_narrow_screens(self):
+        self.create_album(images=(("Beach", True),))
+        self.login()
+        self.page.set_viewport_size({"width": 1200, "height": 800})
+        self.page.goto(f"{self.live_server_url}/admin/gallery/image/")
+        album_header = self.page.locator("#result_list th.column-album_link")
+        expect(album_header).to_be_visible()
+
+        self.page.set_viewport_size({"width": 600, "height": 800})
+
+        expect(album_header).to_be_hidden()
+        expect(self.page.locator("#result_list td.field-album_link")).to_be_hidden()
+        self.page.locator("details.django-admin-tables-columns > summary").click()
+        album = self.page.get_by_label("Album")
+        expect(album).to_be_disabled()
+        expect(album).not_to_be_checked()
+        expect(self.page.get_by_text("(narrow screen)")).to_be_visible()
+
+        self.page.set_viewport_size({"width": 1200, "height": 800})
+
+        expect(album_header).to_be_visible()
+        expect(album).to_be_enabled()
+        expect(album).to_be_checked()
+
+    def test_inline_column_hidden_on_narrow_screens(self):
+        album = self.create_album(images=(("Beach", True),))
+        self.login()
+        self.page.set_viewport_size({"width": 600, "height": 800})
+        self.open_change_page(album)
+
+        expect(self.page.locator("#images-group th.column-is_featured")).to_be_hidden()
+        expect(self.page.locator("#images-group th.column-is_primary")).to_be_visible()
+
+        self.page.set_viewport_size({"width": 1200, "height": 800})
+
+        expect(self.page.locator("#images-group th.column-is_featured")).to_be_visible()

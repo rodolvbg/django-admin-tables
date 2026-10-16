@@ -7,10 +7,18 @@ const SCRIPT =
 let storageKey;
 let counter = 0;
 
+function menuItem(name, maxWidth) {
+    if (!maxWidth) {
+        return `<label><input type="checkbox" data-django-admin-tables-column="${name}" checked> ${name}</label>`;
+    }
+    return `<label><input type="checkbox" data-django-admin-tables-column="${name}" data-django-admin-tables-max-width="${maxWidth}" checked> ${name}<span class="django-admin-tables-columns__note" hidden>(narrow screen)</span></label>`;
+}
+
 function setUpPage({
     hidden = [],
     columns = ["album_link", "is_primary"],
     config,
+    maxWidths = {},
 } = {}) {
     storageKey = `test:${++counter}`;
     const script = document.createElement("script");
@@ -24,12 +32,7 @@ function setUpPage({
         <details class="django-admin-tables-columns">
             <summary>Columns</summary>
             <fieldset class="django-admin-tables-columns__menu">
-                ${columns
-                    .map(
-                        (name) =>
-                            `<label><input type="checkbox" data-django-admin-tables-column="${name}" checked> ${name}</label>`,
-                    )
-                    .join("")}
+                ${columns.map((name) => menuItem(name, maxWidths[name])).join("")}
             </fieldset>
         </details>
         <p id="outside">outside</p>`;
@@ -186,6 +189,83 @@ describe("columns.js", () => {
 
         document.dispatchEvent(new Event("DOMContentLoaded"));
         expect(checkbox("is_primary").checked).toBe(false);
+    });
+
+    describe("columns the viewport hides", () => {
+        let listeners;
+        let matches;
+
+        function mockMatchMedia() {
+            listeners = [];
+            window.matchMedia = vi.fn((query) => ({
+                get matches() {
+                    return matches;
+                },
+                media: query,
+                addEventListener: (_type, listener) => listeners.push(listener),
+            }));
+        }
+
+        afterEach(() => {
+            delete window.matchMedia;
+        });
+
+        function note(name) {
+            return checkbox(name).parentElement.querySelector(
+                ".django-admin-tables-columns__note",
+            );
+        }
+
+        it("are unchecked, disabled and noted while narrow", async () => {
+            setUpPage({ maxWidths: { album_link: "767.98" } });
+            matches = true;
+            mockMatchMedia();
+            await runScript();
+
+            expect(window.matchMedia).toHaveBeenCalledWith(
+                "(max-width: 767.98px)",
+            );
+            expect(checkbox("album_link").checked).toBe(false);
+            expect(checkbox("album_link").disabled).toBe(true);
+            expect(note("album_link").hidden).toBe(false);
+            expect(checkbox("is_primary").disabled).toBe(false);
+        });
+
+        it("get the user's choice back when wide again", async () => {
+            setUpPage({
+                hidden: ["album_link"],
+                maxWidths: { album_link: "767.98", is_primary: "1023.98" },
+            });
+            matches = true;
+            mockMatchMedia();
+            await runScript();
+
+            matches = false;
+            for (const listener of listeners) {
+                listener();
+            }
+
+            expect(checkbox("album_link").disabled).toBe(false);
+            expect(checkbox("album_link").checked).toBe(false);
+            expect(checkbox("is_primary").checked).toBe(true);
+            expect(note("is_primary").hidden).toBe(true);
+        });
+
+        it("work without a note", async () => {
+            setUpPage({ maxWidths: { album_link: "767.98" } });
+            note("album_link").remove();
+            matches = true;
+            mockMatchMedia();
+            await runScript();
+            expect(checkbox("album_link").disabled).toBe(true);
+        });
+
+        it("are left alone without matchMedia", async () => {
+            setUpPage({ maxWidths: { album_link: "767.98" } });
+            await runScript();
+            expect(checkbox("album_link").disabled).toBe(false);
+            expect(checkbox("album_link").checked).toBe(true);
+        });
     });
 
     it("closes the menu on a click outside it, or on Escape", async () => {

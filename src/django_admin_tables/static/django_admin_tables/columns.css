@@ -47,6 +47,15 @@
     white-space: nowrap;
 }
 
+.django-admin-tables-columns__menu > label:has(input:disabled) {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.django-admin-tables-columns__note {
+    font-size: 0.75rem;
+}
+
 /* django-unfold: next to its "Filters" button, with its colors. */
 
 .django-admin-tables-columns--unfold {

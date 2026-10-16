@@ -8,8 +8,9 @@
     <legend>{% translate "Show columns" %}</legend>
     {% for column in columns.columns %}
       <label>
-        <input type="checkbox" data-django-admin-tables-column="{{ column.class }}"{% if columns.checkbox_classes %} class="{{ columns.checkbox_classes }}"{% endif %}{% if not column.hidden %} checked{% endif %}>
+        <input type="checkbox" data-django-admin-tables-column="{{ column.class }}"{% if column.max_width %} data-django-admin-tables-max-width="{{ column.max_width|stringformat:"g" }}"{% endif %}{% if columns.checkbox_classes %} class="{{ columns.checkbox_classes }}"{% endif %}{% if not column.hidden %} checked{% endif %}>
         {{ column.label }}
+        {% if column.max_width %}<span class="django-admin-tables-columns__note" hidden>{% translate "(narrow screen)" %}</span>{% endif %}
       </label>
     {% endfor %}
   </fieldset>

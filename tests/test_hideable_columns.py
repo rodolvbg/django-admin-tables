@@ -66,7 +66,10 @@ def test_changelist_gets_the_columns_menu(admin_client, images):
     assert "admin/change_list.html" in template_names(response)
     content = response.content.decode()
     assert 'class="django-admin-tables-columns"' in content
-    assert 'data-django-admin-tables-column="album_link" checked' in content
+    assert (
+        'data-django-admin-tables-column="album_link"'
+        ' data-django-admin-tables-max-width="767.98" checked'
+    ) in content
     assert 'data-django-admin-tables-column="is_primary" checked' in content
     assert 'data-django-admin-tables-column="is_featured">' in content
     assert "django_admin_tables/columns.js" in content
