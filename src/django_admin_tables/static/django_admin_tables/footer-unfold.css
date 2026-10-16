@@ -1,0 +1,34 @@
+/* The footer rows of FooterRowsMixin: django-unfold's colors, light and dark. */
+
+.django-admin-tables-tfoot,
+.django-admin-tables-footer-summary {
+    --body-fg: var(--color-font-default-light);
+    --body-quiet-color: var(--color-font-subtle-light);
+    --darkened-bg: var(--color-base-50);
+    --hairline-color: var(--color-base-200);
+}
+
+.dark .django-admin-tables-tfoot,
+.dark .django-admin-tables-footer-summary {
+    --body-fg: var(--color-font-default-dark);
+    --body-quiet-color: var(--color-font-subtle-dark);
+    --darkened-bg: var(--color-base-800);
+    --hairline-color: var(--color-base-800);
+}
+
+/* Unfold's cells: its own padding and alignment. */
+table tfoot.django-admin-tables-tfoot.django-admin-tables-tfoot th,
+table tfoot.django-admin-tables-tfoot.django-admin-tables-tfoot td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+table tfoot.django-admin-tables-tfoot.django-admin-tables-tfoot th {
+    text-align: right;
+}
+
+table
+    tfoot.django-admin-tables-tfoot.django-admin-tables-tfoot
+    .django-admin-tables-footer-value {
+    font-weight: 600;
+}

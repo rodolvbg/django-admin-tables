@@ -280,3 +280,30 @@ class TestStrictContentSecurityPolicy(_AdminE2ETestCase):
         expect(self.page.locator("#images-group th.column-is_featured")).to_be_hidden()
         expect(self.page.locator("#images-group th.column-is_primary")).to_be_visible()
         assert self.violations == []
+
+
+class TestFooterRows(_AdminE2ETestCase):
+    def test_totals_follow_their_columns(self):
+        self.create_album(images=(("Beach", True), ("City", False)))
+        self.login()
+        self.page.set_viewport_size({"width": 1200, "height": 800})
+        self.page.goto(f"{self.live_server_url}/admin/gallery/image/")
+
+        footer = self.page.locator("#result_list tfoot")
+        expect(footer.locator("td.field-title")).to_contain_text("2")
+        expect(footer.locator("td.field-is_primary")).to_contain_text("1")
+        # Under its column: hidden with it (list_display_hidden here).
+        expect(footer.locator("td.field-is_featured")).to_be_hidden()
+
+        self.page.locator("details.django-admin-tables-columns > summary").click()
+        self.page.get_by_label("Is primary").uncheck()
+        expect(footer.locator("td.field-is_primary")).to_be_hidden()
+
+    def test_inline_totals(self):
+        album = self.create_album(images=(("Beach", True), ("City", False)))
+        self.login()
+        self.open_change_page(album)
+
+        footer = self.page.locator("#images-group tfoot")
+        expect(footer.locator("td.field-title")).to_contain_text("2")
+        expect(footer.locator("td.field-is_primary")).to_contain_text("1")

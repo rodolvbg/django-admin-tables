@@ -23,6 +23,7 @@ def test_public_api_is_importable_from_top_level_package():
     assert django_admin_tables.__all__ == [
         "AdminTablesMixin",
         "ExclusiveRadioFieldsMixin",
+        "FooterRowsMixin",
         "ForeignKeyLinkMixin",
         "HideableColumnsMixin",
     ]

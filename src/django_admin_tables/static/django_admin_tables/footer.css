@@ -1,0 +1,53 @@
+/* The footer rows of FooterRowsMixin: Django's admin. */
+
+/* As a summary line, below a table without their columns. */
+
+.django-admin-tables-footer-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    font-size: 0.8125rem;
+}
+
+.django-admin-tables-footer-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+}
+
+.django-admin-tables-footer-column {
+    color: var(--body-quiet-color, #666);
+}
+
+.django-admin-tables-footer-summary .django-admin-tables-footer-label,
+.django-admin-tables-footer-summary .django-admin-tables-footer-value {
+    font-weight: bold;
+}
+
+/* As the table's <tfoot>: specific enough to beat the admin's own
+   `tfoot td` and inline rules. */
+
+table tfoot.django-admin-tables-tfoot th,
+table tfoot.django-admin-tables-tfoot td {
+    border-top: 1px solid var(--hairline-color, #e8e8e8);
+    background: var(--darkened-bg, #f8f8f8);
+    color: var(--body-fg, #333);
+    font-size: 0.8125rem;
+    font-weight: normal;
+    text-transform: none;
+}
+
+table tfoot.django-admin-tables-tfoot th {
+    text-align: right;
+}
+
+table tfoot.django-admin-tables-tfoot .django-admin-tables-footer-label {
+    margin-right: 0.5rem;
+    color: var(--body-quiet-color, #666);
+    font-weight: bold;
+}
+
+table tfoot.django-admin-tables-tfoot .django-admin-tables-footer-value {
+    font-weight: bold;
+}

@@ -16,7 +16,8 @@ Works with [django-unfold](https://unfoldadmin.com/) as it is, on its
   button, styled like it, with Unfold's checkboxes;
 - the responsive columns' breakpoints are Unfold's own (Tailwind's `sm`,
   `md`, `lg`, `xl`, `2xl`), and work on its tabular inlines too, which
-  Unfold stacks on phones.
+  Unfold stacks on phones;
+- the footer rows' `<tfoot>` gets Unfold's colors and cell padding.
 
 Both in light and dark mode. Tested with django-unfold 0.108.
 
@@ -61,6 +62,12 @@ The "Columns" menu, light, and dark with the album column hidden:
 On a phone, with the album column hidden by `responsive_columns`:
 
 ![Responsive columns on an Unfold changelist, on a phone](unfold/responsive-columns.png)
+
+Footer rows on a changelist, and on an inline in dark mode:
+
+![Footer rows on an Unfold changelist](unfold/footer-rows.png)
+
+![Footer rows on an Unfold inline, dark mode](unfold/footer-rows-inline-dark.png)
 
 ## Demo
 

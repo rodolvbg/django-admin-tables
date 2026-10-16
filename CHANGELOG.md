@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - Unreleased
 
 First release: django-admin-radio-select and django-admin-fk-links,
-together, with hideable and responsive columns.
+together, with hideable and responsive columns and footer rows.
 
 ### Added
 
@@ -30,6 +30,12 @@ together, with hideable and responsive columns.
   (`"sm"`…`"2xl"` or pixels), with CSS media queries, on the changelist
   and in tabular inlines; disabled in the "Columns" menu while hidden.
   System checks `django_admin_tables.E003` and `E004`.
+- `FooterRowsMixin`: rows of totals, averages… (`footer_rows`) below the
+  columns of the changelist and of inlines, as the table's own `<tfoot>`
+  (a summary line on stacked inlines). Aggregates run in one query, on
+  the filtered rows (`footer_scope = "filtered"`, every page) or the page
+  shown (`"page"`). From django-admin-inline-controls' footer rows. System
+  checks `django_admin_tables.E005` to `E007`.
 - Hideable and responsive columns work under a strict Content Security
   Policy: their CSS is set from a script, as constructed stylesheets, with
   no inline `<style>`.

@@ -18,6 +18,8 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
   changelist to hide or show columns, remembered per user.
 - **[Responsive columns](#responsive-columns)** — columns hidden on
   narrow screens, on the changelist and in tabular inlines.
+- **[Footer rows](#footer-rows)** — totals, averages… below the columns,
+  on the changelist and in inlines.
 
 It brings together, and replaces,
 [django-admin-radio-select](https://pypi.org/project/django-admin-radio-select/)
@@ -49,6 +51,7 @@ or a `StackedInline`. Each one is off until you set its option:
 
 ```python
 from django.contrib import admin
+from django.db.models import Count
 from django_admin_tables import AdminTablesMixin
 
 
@@ -59,6 +62,7 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display_foreign_key_links = ("album",)  # foreign key links
     list_display_hideable = ("album",)  # hideable columns
     responsive_columns = {"album": "md"}  # responsive columns
+    footer_rows = [("Total", {"title": Count("pk")})]  # footer rows
     radio_select_exclusive_fields = ("is_primary",)  # exclusive radio fields
 
 
@@ -71,8 +75,8 @@ class ImageInline(AdminTablesMixin, admin.TabularInline):
 Foreign key links and hideable columns only apply to a `ModelAdmin`'s
 changelist (an inline has no `list_display`). Each extra's mixin is
 available on its own too: `ExclusiveRadioFieldsMixin`,
-`ForeignKeyLinkMixin` and `HideableColumnsMixin` (hideable and responsive
-columns).
+`ForeignKeyLinkMixin`, `HideableColumnsMixin` (hideable and responsive
+columns) and `FooterRowsMixin`.
 
 ## Exclusive radio fields
 
@@ -312,7 +316,70 @@ includes the inline's own `template`. System checks report an unknown
 width (`django_admin_tables.E003`) and, on a `ModelAdmin`, a column that
 isn't in `list_display` (`django_admin_tables.E004`).
 
-### Content Security Policy
+## Footer rows
+
+Totals, averages or any other summary below the columns, on a
+`ModelAdmin`'s changelist or in an inline:
+
+```python
+from django.db.models import Avg, Count, Sum
+
+
+@admin.register(Order)
+class OrderAdmin(AdminTablesMixin, admin.ModelAdmin):
+    list_display = ("number", "customer", "amount", "tax")
+    footer_rows = [
+        ("Total", {"number": Count("pk"), "amount": Sum("amount"), "tax": Sum("tax")}),
+        ("Average", {"amount": Avg("amount")}),
+    ]
+
+
+class OrderLineInline(AdminTablesMixin, admin.TabularInline):
+    model = OrderLine
+    footer_rows = [("Total", {"quantity": Sum("quantity"), "price": Sum("price")})]
+```
+
+![Total row below the changelist's columns](docs/screenshots/footer-rows.png)
+
+- Each row is a label and `{column: value}` (`list_display` names on the
+  changelist, field names in an inline). A value is an **aggregate**
+  (`Sum`, `Avg`, `Count`, `Max`…, `filter=` included), a
+  **`callable(queryset)`** for anything else, or a constant. All the
+  aggregates of all the rows run in **one query**.
+- **What is added up** on the changelist — `footer_scope`:
+  - `"filtered"` (default): every row matching the current filters and
+    search, on **every page**: the total doesn't change from page to page.
+  - `"page"`: only the rows shown.
+
+  In an inline, the rows of the object being edited
+  (`get_inline_footer_queryset()` to change it).
+- **Where they go — rendered by the server, no JS:** the table's own
+  `<tfoot>`, each value under its column, hidden along with it (hideable
+  and responsive columns); the label spans the columns before the first
+  value. The admin's template is rendered as usual (Django's, a theme's or
+  your own) and the `<tfoot>` is inserted before its `</table>`. On a
+  stacked inline, or when a value's column isn't a column of the table,
+  they're a summary line below it instead ("Total: Title 2").
+- **In the add view**, an inline has no saved rows to add up: its `<tfoot>`
+  has the labels and `data-*` attributes with empty values, for your own
+  JS to fill in if you want.
+- `get_footer_rows(request, obj=None)` chooses them per request (`obj` is
+  the object an inline belongs to). `format_footer_value(column, value)`
+  formats each value: the default rounds floats and decimals to 2 places
+  (`1234.5`); return safe HTML for markup.
+
+![Total row below a tabular inline](docs/screenshots/footer-rows-inline.png)
+
+Each value carries `data-footer-row`, `data-column` and `data-value` (the
+plain number, `"1234.5"`) for your JS. Override `footer_tfoot_template` or
+`footer_summary_template` (extending `django_admin_tables/tfoot.html` /
+`footer_summary.html`) to change the markup. System checks report a
+`footer_scope` that isn't `"filtered"` or `"page"`
+(`django_admin_tables.E005`), a row that isn't a `(label, {column: value})`
+pair (`django_admin_tables.E006`) and, on a `ModelAdmin`, a column that
+isn't in `list_display` (`django_admin_tables.E007`).
+
+## Content Security Policy
 
 Both the hideable and the responsive columns work under a strict policy,
 with no `'unsafe-inline'`: their CSS is set by the package's own script,

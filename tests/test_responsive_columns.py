@@ -128,7 +128,7 @@ class TestChangelist:
 
         response = ImageAdmin(Image, admin.site).changelist_view(get(superuser))
 
-        rules = response.context_data["django_admin_tables_columns"]["responsive"]
+        rules = response.context_data["django_admin_tables_responsive"]
         assert [rule["classes"] for rule in rules] == [["album"]]
 
 

@@ -1,0 +1,21 @@
+{% comment %}
+  The footer rows as a summary line, below a table that doesn't have their
+  columns (a stacked inline, say). Override with `footer_summary_template`.
+{% endcomment %}
+{% block summary %}
+  <div class="django-admin-tables-footer-summary">
+    {% for row in footer_rows %}
+      {% block summary_row %}
+        <div class="django-admin-tables-footer-row" data-footer-row="{{ row.label }}">
+          <span class="django-admin-tables-footer-label">{{ row.label }}:</span>
+          {% for cell in row.cells %}
+            <span class="django-admin-tables-footer-cell" data-footer-key="{{ forloop.parentloop.counter0 }}:{{ cell.column }}" data-footer-row="{{ row.label }}" data-column="{{ cell.column }}" data-value="{{ cell.raw }}">
+              <span class="django-admin-tables-footer-column">{{ cell.column_label }}</span>
+              <span class="django-admin-tables-footer-value">{{ cell.value }}</span>
+            </span>
+          {% endfor %}
+        </div>
+      {% endblock summary_row %}
+    {% endfor %}
+  </div>
+{% endblock summary %}

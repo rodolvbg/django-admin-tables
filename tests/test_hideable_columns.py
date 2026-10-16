@@ -164,7 +164,7 @@ def test_custom_change_list_template_is_extended(superuser, images):
     response = changelist(ImageAdmin(Image, admin.site), superuser)
 
     assert response.template_name == "django_admin_tables/change_list.html"
-    parent = config_of(response)["parent"]
+    parent = response.context_data["django_admin_tables_parent"]
     assert parent.template.name == "admin/custom_change_list.html"
     content = response.content.decode()
     assert 'id="custom-change-list"' in content

@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count, Q
 
 from django_admin_tables import AdminTablesMixin
 
@@ -10,12 +11,23 @@ class ImageTabularInline(AdminTablesMixin, admin.TabularInline):
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
     responsive_columns = {"is_featured": "md"}
+    footer_rows = [
+        (
+            "Total",
+            {
+                "title": Count("pk"),
+                "is_primary": Count("pk", filter=Q(is_primary=True)),
+                "is_featured": Count("pk", filter=Q(is_featured=True)),
+            },
+        ),
+    ]
 
 
 class ImageStackedInline(AdminTablesMixin, admin.StackedInline):
     model = Image
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
+    footer_rows = [("Total", {"title": Count("pk")})]
 
 
 @admin.register(Album)
@@ -40,3 +52,13 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     list_display_hideable = ("album", "is_primary", "is_featured")
     list_display_hidden = ("is_featured",)
     responsive_columns = {"album": "md"}
+    footer_rows = [
+        (
+            "Total",
+            {
+                "title": Count("pk"),
+                "is_primary": Count("pk", filter=Q(is_primary=True)),
+                "is_featured": Count("pk", filter=Q(is_featured=True)),
+            },
+        ),
+    ]

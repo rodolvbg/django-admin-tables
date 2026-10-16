@@ -1,7 +1,8 @@
 {% comment %}
-  An inline with responsive_columns: its media queries, applied by
-  columns.js before the inline is painted, then the inline's own template.
-{% endcomment %}{% load static django_admin_tables %}{% with columns=inline_admin_formset.opts.django_admin_tables_inline %}{% with scope="#"|add:inline_admin_formset.formset.prefix|add:"-group" %}
-{% responsive_columns_config columns.responsive scope %}
+  An inline with extras (django_admin_tables.base.TableTemplatesMixin): its
+  responsive columns' media queries, applied by columns.js before the inline
+  is painted, then the inline's own template, with its footer rows.
+{% endcomment %}{% load static django_admin_tables %}{% with extras=inline_admin_formset.opts.django_admin_tables_inline %}{% if extras.responsive %}{% with scope="#"|add:inline_admin_formset.formset.prefix|add:"-group" %}
+{% responsive_columns_config extras.responsive scope %}
 <script src="{% static 'django_admin_tables/columns.js' %}"></script>
-{% endwith %}{% include columns.parent %}{% endwith %}
+{% endwith %}{% endif %}{% django_admin_tables_inline %}{% endwith %}

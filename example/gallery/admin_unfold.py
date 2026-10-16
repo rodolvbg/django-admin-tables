@@ -1,5 +1,6 @@
 """The demo's admin on an Unfold site (see ``example.settings_unfold``)."""
 
+from django.db.models import Count, Q
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.sites import UnfoldAdminSite
 
@@ -15,12 +16,23 @@ class ImageTabularInline(AdminTablesMixin, TabularInline):
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
     responsive_columns = {"is_featured": "md"}
+    footer_rows = [
+        (
+            "Total",
+            {
+                "title": Count("pk"),
+                "is_primary": Count("pk", filter=Q(is_primary=True)),
+                "is_featured": Count("pk", filter=Q(is_featured=True)),
+            },
+        ),
+    ]
 
 
 class ImageStackedInline(AdminTablesMixin, StackedInline):
     model = Image
     extra = 3
     radio_select_exclusive_fields = ("is_primary", "is_featured")
+    footer_rows = [("Total", {"title": Count("pk")})]
 
 
 class AlbumAdmin(AdminTablesMixin, ModelAdmin):
@@ -44,6 +56,16 @@ class ImageAdmin(AdminTablesMixin, ModelAdmin):
     list_display_hideable = ("album", "is_primary", "is_featured")
     list_display_hidden = ("is_featured",)
     responsive_columns = {"album": "md"}
+    footer_rows = [
+        (
+            "Total",
+            {
+                "title": Count("pk"),
+                "is_primary": Count("pk", filter=Q(is_primary=True)),
+                "is_featured": Count("pk", filter=Q(is_featured=True)),
+            },
+        ),
+    ]
 
 
 site.register(Image, ImageAdmin)

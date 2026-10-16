@@ -1,0 +1,35 @@
+{% comment %}
+  The footer rows as the <tfoot> of a table, one cell per column. Rendered
+  by the server, no JS. Override with `footer_tfoot_template` (e.g. a
+  template that extends this one); format the values with
+  `format_footer_value()`. data-footer-key / data-footer-row / data-column /
+  data-value (the number, unformatted) are there for the page's own JS.
+{% endcomment %}
+{% block tfoot %}
+  <tfoot class="django-admin-tables-tfoot">
+    {% for row in tfoot_rows %}
+      {% block tfoot_row %}
+        <tr class="django-admin-tables-tfoot-row" data-footer-row="{{ row.label }}">
+          {% if row.label_colspan %}
+            <th scope="row" colspan="{{ row.label_colspan }}">
+              {% block tfoot_label %}<span class="django-admin-tables-footer-label">{{ row.label }}</span>{% endblock %}
+            </th>
+          {% endif %}
+          {% for slot in row.cells %}
+            {% block tfoot_cell %}
+              {% if slot.cell %}
+                <td class="django-admin-tables-footer-value field-{{ slot.cell.css }}">
+                  {% if slot.label_here %}<span class="django-admin-tables-footer-label">{{ row.label }}</span>{% endif %}
+                  <span class="django-admin-tables-footer-number" data-footer-key="{{ slot.key }}" data-footer-row="{{ row.label }}" data-column="{{ slot.cell.column }}" data-value="{{ slot.cell.raw }}">{% block tfoot_value %}{{ slot.cell.value }}{% endblock %}</span>
+                </td>
+              {% else %}
+                <td></td>
+              {% endif %}
+            {% endblock tfoot_cell %}
+          {% endfor %}
+          {% if row.trailing %}<td colspan="{{ row.trailing }}"></td>{% endif %}
+        </tr>
+      {% endblock tfoot_row %}
+    {% endfor %}
+  </tfoot>
+{% endblock tfoot %}

@@ -1,25 +1,31 @@
-{% extends django_admin_tables_columns.parent %}
+{% extends django_admin_tables_parent %}
 {% load static django_admin_tables %}
 
 {% block extrastyle %}
   {{ block.super }}
-  {% if django_admin_tables_columns.columns %}<link rel="stylesheet" href="{% static 'django_admin_tables/columns.css' %}">{% endif %}
+  {% if django_admin_tables_columns %}<link rel="stylesheet" href="{% static 'django_admin_tables/columns.css' %}">{% endif %}
 {% endblock %}
 
 {% block extrahead %}
   {{ block.super }}
-  {% if django_admin_tables_columns.columns %}{{ django_admin_tables_columns.config|json_script:"django-admin-tables-columns" }}{% endif %}
-  {% if django_admin_tables_columns.responsive %}{% responsive_columns_config django_admin_tables_columns.responsive "#result_list" %}{% endif %}
-  {# Not deferred: it hides the columns before the table is painted. #}
-  <script src="{% static 'django_admin_tables/columns.js' %}"></script>
+  {% if django_admin_tables_columns %}{{ django_admin_tables_columns.config|json_script:"django-admin-tables-columns" }}{% endif %}
+  {% if django_admin_tables_responsive %}{% responsive_columns_config django_admin_tables_responsive "#result_list" %}{% endif %}
+  {% if django_admin_tables_columns or django_admin_tables_responsive %}
+    {# Not deferred: it hides the columns before the table is painted. #}
+    <script src="{% static 'django_admin_tables/columns.js' %}"></script>
+  {% endif %}
 {% endblock %}
 
 {% block search %}
   {{ block.super }}
-  {% if django_admin_tables_columns.columns and not django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
+  {% if django_admin_tables_columns and not django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
 {% endblock %}
 
 {% block filters %}
   {{ block.super }}
-  {% if django_admin_tables_columns.columns and django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
+  {% if django_admin_tables_columns.unfold %}{% include "django_admin_tables/columns_menu.html" with columns=django_admin_tables_columns %}{% endif %}
+{% endblock %}
+
+{% block result_list %}
+  {% django_admin_tables_footer django_admin_tables_footer %}{{ block.super }}{% end_django_admin_tables_footer %}
 {% endblock %}
