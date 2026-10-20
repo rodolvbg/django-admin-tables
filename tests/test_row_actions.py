@@ -1,17 +1,17 @@
 import json
 from unittest import mock
 
-import pytest
 from django.contrib import admin, messages
 from django.contrib.admin.models import LogEntry
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Permission, User
 from django.contrib.messages.storage.cookie import CookieStorage
 from django.db.models import ProtectedError
 from django.http import HttpResponse
-from django.test import Client, RequestFactory
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from gallery.admin import AlbumAdmin, ImageAdmin, ImageTabularInline
 from gallery.models import Album, Image
+from unittest_parametrize import ParametrizedTestCase, parametrize
 
 from django_admin_tables import RowActionsMixin, row_action
 from django_admin_tables.row_actions.actions import (
@@ -22,48 +22,7 @@ from django_admin_tables.row_actions.actions import (
     view,
 )
 
-pytestmark = pytest.mark.django_db
-
 INSTALLED = "django_admin_tables.row_actions.mixins.apps.is_installed"
-
-
-@pytest.fixture
-def superuser(django_user_model):
-    return django_user_model.objects.create_superuser(
-        "admin", "admin@example.com", "password"
-    )
-
-
-@pytest.fixture
-def admin_client(superuser):
-    client = Client()
-    client.force_login(superuser)
-    return client
-
-
-@pytest.fixture
-def viewer(django_user_model):
-    """Staff that may only view images and albums."""
-    user = django_user_model.objects.create_user("viewer", password="password")
-    user.is_staff = True
-    user.save()
-    user.user_permissions.add(
-        *Permission.objects.filter(codename__in=["view_image", "view_album"])
-    )
-    return user
-
-
-@pytest.fixture
-def album():
-    album = Album.objects.create(title="Alps")
-    Image.objects.create(album=album, title="Peak", is_primary=True)
-    Image.objects.create(album=album, title="Lake")
-    return album
-
-
-@pytest.fixture
-def peak(album):
-    return album.images.get(title="Peak")
 
 
 def get(user, **attrs):
@@ -86,8 +45,29 @@ def inline_url(album, row, action, inline=0):
     )
 
 
-class TestSpecs:
-    def test_label_css_attrs_and_confirmation(self, peak):
+class TestSpecs(ParametrizedTestCase, TestCase):
+    """Building and running the row action specs."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        # Staff that may only view images and albums.
+        cls.viewer = User.objects.create_user("viewer", password="password")
+        cls.viewer.is_staff = True
+        cls.viewer.save()
+        cls.viewer.user_permissions.add(
+            *Permission.objects.filter(codename__in=["view_image", "view_album"])
+        )
+        cls.album = Album.objects.create(title="Alps")
+        cls.peak = Image.objects.create(album=cls.album, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.album, title="Lake")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_label_css_attrs_and_confirmation(self):
         @row_action(
             description="Publish %(object)s",
             confirmation="Publish “%(object)s” (%(verbose_name)s)?",
@@ -99,7 +79,7 @@ class TestSpecs:
         publish.attribute_properties = {"title": "Go"}
         image_admin = ImageAdmin(Image, admin.site)
 
-        spec = row_action_spec(image_admin, "publish", publish, peak)
+        spec = row_action_spec(image_admin, "publish", publish, self.peak)
 
         assert spec.label == "Publish Peak"
         assert spec.css_classes == "danger"
@@ -107,7 +87,7 @@ class TestSpecs:
         assert spec.confirmation == "Publish “Peak” (image)?"
         assert spec.url is None
 
-    def test_hooks_per_row(self, peak):
+    def test_hooks_per_row(self):
         def publish(model_admin, request, obj):
             pass
 
@@ -121,7 +101,7 @@ class TestSpecs:
             def get_publish_attrs(self, obj):
                 return 'data-x="1"'
 
-        spec = row_action_spec(Admin(Image, admin.site), "publish", publish, peak)
+        spec = row_action_spec(Admin(Image, admin.site), "publish", publish, self.peak)
 
         assert (spec.label, spec.css_classes, spec.attrs) == (
             "Publish Peak!",
@@ -129,20 +109,20 @@ class TestSpecs:
             'data-x="1"',
         )
 
-    def test_label_from_the_name(self, peak):
+    def test_label_from_the_name(self):
         def mark_as_seen(model_admin, request, obj):
             pass
 
         spec = row_action_spec(
-            ImageAdmin(Image, admin.site), "mark_as_seen", mark_as_seen, peak
+            ImageAdmin(Image, admin.site), "mark_as_seen", mark_as_seen, self.peak
         )
         assert spec.label == "Mark as seen"
 
-    def test_view_is_a_link(self, peak):
-        spec = row_action_spec(ImageAdmin(Image, admin.site), "view", view, peak)
-        assert spec.url == reverse("admin:gallery_image_change", args=[peak.pk])
+    def test_view_is_a_link(self):
+        spec = row_action_spec(ImageAdmin(Image, admin.site), "view", view, self.peak)
+        assert spec.url == reverse("admin:gallery_image_change", args=[self.peak.pk])
 
-    def test_a_link_from_its_hook(self, peak):
+    def test_a_link_from_its_hook(self):
         @row_action(link=True, description="Site")
         def site(model_admin, request, obj):
             pass
@@ -151,10 +131,10 @@ class TestSpecs:
             def get_site_url(self, obj):
                 return f"/images/{obj.pk}/"
 
-        spec = row_action_spec(Admin(Image, admin.site), "site", site, peak)
-        assert spec.url == f"/images/{peak.pk}/"
+        spec = row_action_spec(Admin(Image, admin.site), "site", site, self.peak)
+        assert spec.url == f"/images/{self.peak.pk}/"
 
-    def test_permissions_and_links_without_a_url(self, superuser, viewer, peak):
+    def test_permissions_and_links_without_a_url(self):
         @row_action(link=True)
         def nowhere(model_admin, request, obj):
             pass
@@ -175,17 +155,19 @@ class TestSpecs:
 
         image_admin = Admin(Image, admin.site)
 
-        assert list(image_admin.get_row_action_specs(get(superuser), peak)) == [
+        assert list(image_admin.get_row_action_specs(get(self.user), self.peak)) == [
             "view",
             "toggle",
             "delete",
             "custom",
         ]
-        assert list(image_admin.get_row_action_specs(get(viewer), peak)) == ["view"]
-        assert image_admin.get_row_action_specs(get(superuser), None) == {}
-        assert image_admin.get_row_action_specs(get(superuser), Image()) == {}
+        assert list(image_admin.get_row_action_specs(get(self.viewer), self.peak)) == [
+            "view"
+        ]
+        assert image_admin.get_row_action_specs(get(self.user), None) == {}
+        assert image_admin.get_row_action_specs(get(self.user), Image()) == {}
 
-    @pytest.mark.parametrize(
+    @parametrize(
         ("kind", "expected"),
         [
             ("one", lambda admin_, peak, album: [("one", peak)]),
@@ -194,8 +176,9 @@ class TestSpecs:
             ("plain", lambda admin_, peak, album: [("plain", admin_, peak)]),
             ("bound", lambda admin_, peak, album: [("one", peak)]),
         ],
+        ids=["one", "with_parent", "many", "plain", "bound"],
     )
-    def test_run_each_form(self, superuser, album, peak, kind, expected):
+    def test_run_each_form(self, kind, expected):
         calls = []
 
         class Admin(RowActionsMixin, admin.ModelAdmin):
@@ -221,64 +204,86 @@ class TestSpecs:
         }[kind]
         spec = RowActionSpec(kind, function, kind, "", "", None)
 
-        run_row_action(image_admin, get(superuser), spec, peak, album)
+        run_row_action(image_admin, get(self.user), spec, self.peak, self.album)
 
-        assert calls == expected(image_admin, peak, album)
+        assert calls == expected(image_admin, self.peak, self.album)
 
 
-class TestChangelist:
-    def test_column_with_the_buttons(self, admin_client, peak):
-        response = admin_client.get(reverse("admin:gallery_image_changelist"))
+class TestChangelist(TestCase):
+    """Row actions on the changelist."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        # Staff that may only view images and albums.
+        cls.viewer = User.objects.create_user("viewer", password="password")
+        cls.viewer.is_staff = True
+        cls.viewer.save()
+        cls.viewer.user_permissions.add(
+            *Permission.objects.filter(codename__in=["view_image", "view_album"])
+        )
+        cls.album = Album.objects.create(title="Alps")
+        cls.peak = Image.objects.create(album=cls.album, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.album, title="Lake")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_column_with_the_buttons(self):
+        response = self.client.get(reverse("admin:gallery_image_changelist"))
 
         content = response.content.decode()
         assert 'class="column-row_actions"' in content
         assert (
-            f'href="{reverse("admin:gallery_image_change", args=[peak.pk])}"' in content
+            f'href="{reverse("admin:gallery_image_change", args=[self.peak.pk])}"'
+            in content
         )
-        url = action_url(peak, "toggle_featured")
+        url = action_url(self.peak, "toggle_featured")
         assert f'data-django-admin-tables-row-action="{url}"' in content
         assert 'data-confirmation="Delete “Peak”? This cannot be undone."' in content
         assert ">Feature</button>" in content
         assert "django_admin_tables/row-actions.js" in content
 
-    def test_placed_where_listed(self, superuser, peak):
+    def test_placed_where_listed(self):
         class Admin(RowActionsMixin, admin.ModelAdmin):
             list_display = ("row_actions", "title")
             row_actions = ["view"]
 
-        list_display = Admin(Image, admin.site).get_list_display(get(superuser))
+        list_display = Admin(Image, admin.site).get_list_display(get(self.user))
 
         assert getattr(list_display[0], "__name__", "") == "row_actions"
         assert list_display[1] == "title"
 
-    def test_no_column_without_actions(self, admin_client):
-        response = admin_client.get(reverse("admin:gallery_album_changelist"))
+    def test_no_column_without_actions(self):
+        response = self.client.get(reverse("admin:gallery_album_changelist"))
         assert "column-row_actions" not in response.content.decode()
         assert "row-actions.js" not in response.content.decode()
 
-    def test_run_and_go_back(self, admin_client, peak):
+    def test_run_and_go_back(self):
         back = reverse("admin:gallery_image_changelist") + "?q=Peak"
 
-        response = admin_client.post(
-            action_url(peak, "toggle_featured"), {"next": back}, follow=True
+        response = self.client.post(
+            action_url(self.peak, "toggle_featured"), {"next": back}, follow=True
         )
 
         assert response.redirect_chain == [(back, 302)]
-        peak.refresh_from_db()
-        assert peak.is_featured
+        self.peak.refresh_from_db()
+        assert self.peak.is_featured
         assert [str(m) for m in response.context["messages"]] == [
             "“Peak” is featured now."
         ]
 
-    def test_unsafe_next_goes_to_the_changelist(self, admin_client, peak):
-        response = admin_client.post(
-            action_url(peak, "toggle_featured"), {"next": "https://evil.example/"}
+    def test_unsafe_next_goes_to_the_changelist(self):
+        response = self.client.post(
+            action_url(self.peak, "toggle_featured"), {"next": "https://evil.example/"}
         )
         assert response.url == reverse("admin:gallery_image_changelist")
 
-    def test_ajax_gets_the_outcome(self, admin_client, peak):
-        response = admin_client.post(
-            action_url(peak, "toggle_featured"),
+    def test_ajax_gets_the_outcome(self):
+        response = self.client.post(
+            action_url(self.peak, "toggle_featured"),
             headers={"x-requested-with": "XMLHttpRequest"},
         )
         assert json.loads(response.content) == {
@@ -286,150 +291,181 @@ class TestChangelist:
             "message": "“Peak” is featured now.",
         }
 
-    def test_ajax_error_status(self, admin_client, peak):
+    def test_ajax_error_status(self):
         with mock.patch.object(
-            Image, "delete", side_effect=ProtectedError("no", [peak.album])
+            Image, "delete", side_effect=ProtectedError("no", [self.peak.album])
         ):
-            response = admin_client.post(
-                action_url(peak, "delete"),
+            response = self.client.post(
+                action_url(self.peak, "delete"),
                 headers={"x-requested-with": "XMLHttpRequest"},
             )
         result = json.loads(response.content)
         assert result["status"] == "error"
         assert "Cannot delete “Peak”: Alps depend on it." == result["message"]
 
-    def test_delete(self, admin_client, peak):
-        admin_client.post(action_url(peak, "delete"))
-        assert not Image.objects.filter(pk=peak.pk).exists()
+    def test_delete(self):
+        self.client.post(action_url(self.peak, "delete"))
+        assert not Image.objects.filter(pk=self.peak.pk).exists()
 
-    def test_the_action_own_response(self, admin_client, peak):
+    def test_the_action_own_response(self):
         def export(model_admin, request, queryset):
             return HttpResponse(",".join(obj.title for obj in queryset))
 
         with mock.patch.object(ImageAdmin, "row_actions", [export]):
-            response = admin_client.post(action_url(peak, "export"))
+            response = self.client.post(action_url(self.peak, "export"))
         assert response.content == b"Peak"
 
-    def test_errors(self, admin_client, client, viewer, peak):
-        assert admin_client.post(action_url(peak, "nope")).status_code == 400
+    def test_errors(self):
+        assert self.client.post(action_url(self.peak, "nope")).status_code == 400
         # A link isn't run.
-        assert admin_client.post(action_url(peak, "view")).status_code == 400
+        assert self.client.post(action_url(self.peak, "view")).status_code == 400
         missing = reverse("admin:gallery_image_row_action", args=[0, "delete"])
-        assert admin_client.post(missing).status_code == 404
-        assert admin_client.get(action_url(peak, "delete")).status_code == 405
+        assert self.client.post(missing).status_code == 404
+        assert self.client.get(action_url(self.peak, "delete")).status_code == 405
 
-        client.force_login(viewer)
-        assert client.post(action_url(peak, "delete")).status_code == 400
-        assert Image.objects.filter(pk=peak.pk).exists()
+        self.client.force_login(self.viewer)
+        assert self.client.post(action_url(self.peak, "delete")).status_code == 400
+        assert Image.objects.filter(pk=self.peak.pk).exists()
 
-    def test_needs_the_view_permission(self, django_user_model, client, peak):
-        user = django_user_model.objects.create_user("staff", password="x")
+    def test_needs_the_view_permission(self):
+        user = User.objects.create_user("staff", password="x")
         user.is_staff = True
         user.save()
-        client.force_login(user)
-        assert client.post(action_url(peak, "delete")).status_code == 403
+        self.client.force_login(user)
+        assert self.client.post(action_url(self.peak, "delete")).status_code == 403
 
 
-class TestInline:
-    def test_column_in_the_change_view(self, admin_client, album, peak):
-        response = admin_client.get(
-            reverse("admin:gallery_album_change", args=[album.pk])
+class TestInline(TestCase):
+    """Row actions on inlines."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        # Staff that may only view images and albums.
+        cls.viewer = User.objects.create_user("viewer", password="password")
+        cls.viewer.is_staff = True
+        cls.viewer.save()
+        cls.viewer.user_permissions.add(
+            *Permission.objects.filter(codename__in=["view_image", "view_album"])
+        )
+        cls.album = Album.objects.create(title="Alps")
+        cls.peak = Image.objects.create(album=cls.album, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.album, title="Lake")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_column_in_the_change_view(self):
+        response = self.client.get(
+            reverse("admin:gallery_album_change", args=[self.album.pk])
         )
 
         content = response.content.decode()
-        url = inline_url(album, peak, "toggle_featured")
+        url = inline_url(self.album, self.peak, "toggle_featured")
         assert f'data-django-admin-tables-row-action="{url}"' in content
         assert "row-actions.js" in content
 
-    def test_not_in_the_add_view(self, admin_client):
-        response = admin_client.get(reverse("admin:gallery_album_add"))
+    def test_not_in_the_add_view(self):
+        response = self.client.get(reverse("admin:gallery_album_add"))
         assert "django-admin-tables-row-actions" not in response.content.decode()
 
-    def test_run_and_go_back(self, admin_client, album, peak):
-        change = reverse("admin:gallery_album_change", args=[album.pk])
+    def test_run_and_go_back(self):
+        change = reverse("admin:gallery_album_change", args=[self.album.pk])
 
-        response = admin_client.post(inline_url(album, peak, "toggle_featured"))
+        response = self.client.post(
+            inline_url(self.album, self.peak, "toggle_featured")
+        )
 
         assert response.url == change
-        peak.refresh_from_db()
-        assert peak.is_featured
+        self.peak.refresh_from_db()
+        assert self.peak.is_featured
 
-    def test_delete_is_logged_on_the_parent(self, admin_client, album, peak):
-        admin_client.post(inline_url(album, peak, "delete"))
+    def test_delete_is_logged_on_the_parent(self):
+        self.client.post(inline_url(self.album, self.peak, "delete"))
 
-        assert not Image.objects.filter(pk=peak.pk).exists()
+        assert not Image.objects.filter(pk=self.peak.pk).exists()
         entry = LogEntry.objects.get()
-        assert entry.object_id == str(album.pk)
+        assert entry.object_id == str(self.album.pk)
         assert "Peak" in entry.get_change_message()
 
-    def test_errors(self, admin_client, album, peak):
+    def test_errors(self):
         other = Album.objects.create(title="Other")
         stranger = Image.objects.create(album=other, title="Stranger")
         assert (
-            admin_client.post(inline_url(album, stranger, "delete")).status_code == 400
+            self.client.post(inline_url(self.album, stranger, "delete")).status_code
+            == 400
         )
         assert (
-            admin_client.post(inline_url(album, peak, "delete", inline=5)).status_code
+            self.client.post(
+                inline_url(self.album, self.peak, "delete", inline=5)
+            ).status_code
             == 404
         )
         missing = reverse(
-            "admin:gallery_album_inline_row_action", args=[0, 0, peak.pk, "delete"]
+            "admin:gallery_album_inline_row_action", args=[0, 0, self.peak.pk, "delete"]
         )
-        assert admin_client.post(missing).status_code == 404
+        assert self.client.post(missing).status_code == 404
 
-    def test_inline_without_row_actions(self, admin_client, album, peak):
+    def test_inline_without_row_actions(self):
         class Plain(admin.TabularInline):
             model = Image
 
         with mock.patch.object(AlbumAdmin, "inlines", [Plain]):
-            response = admin_client.post(inline_url(album, peak, "delete"))
+            response = self.client.post(inline_url(self.album, self.peak, "delete"))
         assert response.status_code == 404
 
-    def test_needs_the_view_permission(self, django_user_model, client, album, peak):
-        user = django_user_model.objects.create_user("staff", password="x")
+    def test_needs_the_view_permission(self):
+        user = User.objects.create_user("staff", password="x")
         user.is_staff = True
         user.save()
-        client.force_login(user)
-        assert client.post(inline_url(album, peak, "delete")).status_code == 403
+        self.client.force_login(user)
+        assert (
+            self.client.post(inline_url(self.album, self.peak, "delete")).status_code
+            == 403
+        )
 
-    def test_render_without_its_request(self, peak):
+    def test_render_without_its_request(self):
         inline = ImageTabularInline(Album, admin.site)
-        assert inline.render_row_actions(peak) == ""
+        assert inline.render_row_actions(self.peak) == ""
 
-    def test_parent_admin_without_the_mixin(self, superuser, album, peak):
+    def test_parent_admin_without_the_mixin(self):
         site = admin.AdminSite(name="plain")
         site.register(Album, admin.ModelAdmin, inlines=[ImageTabularInline])
         inline = ImageTabularInline(Album, site)
-        inline.get_formset(get(superuser), album)
-        assert inline.render_row_actions(peak) == ""
+        inline.get_formset(get(self.user), self.album)
+        assert inline.render_row_actions(self.peak) == ""
 
         errors = inline.check()
         assert [e.id for e in errors] == ["django_admin_tables.E009"]
 
-    def test_fieldsets(self, superuser, album):
+    def test_fieldsets(self):
         class Inline(RowActionsMixin, admin.StackedInline):
             model = Image
             fieldsets = [(None, {"fields": ["title"]})]
             row_actions = ["delete"]
 
         inline = Inline(Album, admin.site)
-        request = get(superuser)
-        assert inline.get_fieldsets(request, album) == [
+        request = get(self.user)
+        assert inline.get_fieldsets(request, self.album) == [
             (None, {"fields": ["title", "render_row_actions"]})
         ]
-        assert "render_row_actions" in inline.get_readonly_fields(request, album)
+        assert "render_row_actions" in inline.get_readonly_fields(request, self.album)
         assert inline.get_fieldsets(request, None) == [(None, {"fields": ["title"]})]
 
-    def test_message_user(self, superuser):
+    def test_message_user(self):
         inline = ImageTabularInline(Album, admin.site)
-        request = get(superuser)
+        request = get(self.user)
         inline.message_user(request, "Hi", messages.WARNING)
         assert [(m.level, str(m)) for m in request._messages] == [
             (messages.WARNING, "Hi")
         ]
 
 
-class TestMedia:
+class TestMedia(SimpleTestCase):
+    """The row actions' assets."""
+
     def test_only_with_row_actions(self):
         assert "row-actions.js" in str(ImageAdmin(Image, admin.site).media)
         assert "row-actions.js" not in str(AlbumAdmin(Album, admin.site).media)
@@ -447,7 +483,9 @@ class TestMedia:
         assert Admin(Image, admin.site).has_row_actions
 
 
-class TestChecks:
+class TestChecks(SimpleTestCase):
+    """The mixin's system checks."""
+
     def test_unknown_action(self):
         class Admin(RowActionsMixin, admin.ModelAdmin):
             row_actions = ["view", "nope", delete]
@@ -461,37 +499,63 @@ class TestChecks:
         assert AlbumAdmin(Album, admin.site).check() == []
 
 
-def test_view_without_a_change_view_is_left_out(superuser, peak):
-    class Admin(RowActionsMixin, admin.ModelAdmin):
-        row_actions = ["view"]
+class TestRowActionsMixin(TestCase):
+    """The mixin's edge cases."""
 
-    other_site = admin.AdminSite(name="other")
-    image_admin = Admin(Image, other_site)
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        # Staff that may only view images and albums.
+        cls.viewer = User.objects.create_user("viewer", password="password")
+        cls.viewer.is_staff = True
+        cls.viewer.save()
+        cls.viewer.user_permissions.add(
+            *Permission.objects.filter(codename__in=["view_image", "view_album"])
+        )
+        cls.album = Album.objects.create(title="Alps")
+        cls.peak = Image.objects.create(album=cls.album, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.album, title="Lake")
 
-    assert image_admin.get_row_action_specs(get(superuser), peak) == {}
-    # Run anyway, it goes to its change view (none here).
-    assert view(image_admin, get(superuser), peak).url == ""
+    def setUp(self):
+        self.client.force_login(self.user)
 
+    def test_view_without_a_change_view_is_left_out(self):
+        class Admin(RowActionsMixin, admin.ModelAdmin):
+            row_actions = ["view"]
 
-def test_a_row_without_actions_has_an_empty_cell(viewer, peak):
-    class Admin(RowActionsMixin, admin.ModelAdmin):
-        row_actions = ["delete"]
+        other_site = admin.AdminSite(name="other")
+        image_admin = Admin(Image, other_site)
 
-    cell = Admin(Image, admin.site).render_row_actions_cell(
-        get(viewer), peak, lambda action: "/"
-    )
-    assert cell == ""
+        assert image_admin.get_row_action_specs(get(self.user), self.peak) == {}
+        # Run anyway, it goes to its change view (none here).
+        assert view(image_admin, get(self.user), self.peak).url == ""
 
+    def test_a_row_without_actions_has_an_empty_cell(self):
+        class Admin(RowActionsMixin, admin.ModelAdmin):
+            row_actions = ["delete"]
 
-def test_inline_listing_the_column_itself(superuser, album):
-    class Inline(RowActionsMixin, admin.TabularInline):
-        model = Image
-        fields = ["title", "render_row_actions"]
-        row_actions = ["delete"]
+        cell = Admin(Image, admin.site).render_row_actions_cell(
+            get(self.viewer), self.peak, lambda action: "/"
+        )
+        assert cell == ""
 
-    inline = Inline(Album, admin.site)
-    assert inline.get_fields(get(superuser), album) == ["title", "render_row_actions"]
+    def test_inline_listing_the_column_itself(self):
+        class Inline(RowActionsMixin, admin.TabularInline):
+            model = Image
+            fields = ["title", "render_row_actions"]
+            row_actions = ["delete"]
 
-    # Declared without it: added last.
-    Inline.fields = ["title"]
-    assert inline.get_fields(get(superuser), album) == ["title", "render_row_actions"]
+        inline = Inline(Album, admin.site)
+        assert inline.get_fields(get(self.user), self.album) == [
+            "title",
+            "render_row_actions",
+        ]
+
+        # Declared without it: added last.
+        Inline.fields = ["title"]
+        assert inline.get_fields(get(self.user), self.album) == [
+            "title",
+            "render_row_actions",
+        ]

@@ -2,10 +2,11 @@ import re
 from decimal import Decimal
 from unittest import mock
 
-import pytest
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.db.models import Count, Max, Q
-from django.test import Client, RequestFactory
+from django.template import Template, TemplateSyntaxError
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from gallery.models import Album, Image
@@ -22,38 +23,12 @@ from django_admin_tables.footer.rows import (
     raw_number,
 )
 
-pytestmark = pytest.mark.django_db
-
 INSTALLED = "django_admin_tables.footer.mixins.apps.is_installed"
 
 
-@pytest.fixture
-def superuser(django_user_model):
-    return django_user_model.objects.create_superuser(
-        "admin", "admin@example.com", "password"
-    )
-
-
-@pytest.fixture
-def admin_client(superuser):
-    client = Client()
-    client.force_login(superuser)
-    return client
-
-
-@pytest.fixture
-def albums():
-    alps = Album.objects.create(title="Alps")
-    coast = Album.objects.create(title="Coast")
-    Image.objects.create(album=alps, title="Peak", is_primary=True)
-    Image.objects.create(album=alps, title="Lake", is_featured=True)
-    Image.objects.create(album=coast, title="Harbor", is_primary=True)
-    return alps, coast
-
-
-def get(superuser, path="/", **params):
+def get(user, path="/", **params):
     request = RequestFactory().get(path, params)
-    request.user = superuser
+    request.user = user
     return request
 
 
@@ -69,7 +44,23 @@ def values(html):
     return dict(re.findall(r'data-column="([^"]+)" data-value="([^"]*)"', html))
 
 
-class TestRows:
+class TestRows(TestCase):
+    """Footer rows computation and layout."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        cls.alps = Album.objects.create(title="Alps")
+        cls.coast = Album.objects.create(title="Coast")
+        Image.objects.create(album=cls.alps, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.alps, title="Lake", is_featured=True)
+        Image.objects.create(album=cls.coast, title="Harbor", is_primary=True)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
     def test_raw_number(self):
         assert raw_number(3) == "3"
         assert raw_number(2.5) == "2.5"
@@ -78,14 +69,12 @@ class TestRows:
         assert raw_number(None) == ""
         assert raw_number("3") == ""
 
-    def test_compute_runs_every_aggregate_in_one_query(
-        self, albums, django_assert_num_queries
-    ):
+    def test_compute_runs_every_aggregate_in_one_query(self):
         definitions = [
             ("Total", {"title": Count("pk"), "album": lambda qs: qs.count() * 10}),
             ("Max", {"title": Max("title"), "is_primary": "n/a"}),
         ]
-        with django_assert_num_queries(2):  # One for the aggregates, one callable.
+        with self.assertNumQueries(2):  # One for the aggregates, one callable.
             rows = compute_footer_rows(
                 definitions,
                 Image.objects.all(),
@@ -113,8 +102,8 @@ class TestRows:
         assert rows[0].cells[1].css == "album_link"
         assert rows[0].cells[0].css == "title"
 
-    def test_compute_without_aggregates(self, albums, django_assert_num_queries):
-        with django_assert_num_queries(0):
+    def test_compute_without_aggregates(self):
+        with self.assertNumQueries(0):
             rows = compute_footer_rows(
                 [("Note", {"title": "-"})], Image.objects.all(), str, lambda c, v: v
             )
@@ -166,9 +155,25 @@ class TestRows:
         assert layout_tfoot_rows(rows, {"title": 0}, 1) is None
 
 
-class TestChangelist:
-    def test_tfoot_under_the_columns(self, admin_client, albums):
-        response = admin_client.get(reverse("admin:gallery_image_changelist"))
+class TestChangelist(TestCase):
+    """The footer on the changelist."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        cls.alps = Album.objects.create(title="Alps")
+        cls.coast = Album.objects.create(title="Coast")
+        Image.objects.create(album=cls.alps, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.alps, title="Lake", is_featured=True)
+        Image.objects.create(album=cls.coast, title="Harbor", is_primary=True)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_tfoot_under_the_columns(self):
+        response = self.client.get(reverse("admin:gallery_image_changelist"))
 
         content = response.content.decode()
         footer = tfoot(content)
@@ -178,7 +183,7 @@ class TestChangelist:
         assert content.index("<tfoot") > content.index('<table id="result_list"')
         assert "django_admin_tables/footer.css" in content
 
-    def test_filtered_scope_follows_the_search_and_filters(self, superuser, albums):
+    def test_filtered_scope_follows_the_search_and_filters(self):
         class ImageAdmin(FooterRowsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
             list_filter = ("is_primary",)
@@ -186,26 +191,26 @@ class TestChangelist:
             footer_rows = [("Total", {"title": Count("pk")})]
 
         response = ImageAdmin(Image, admin.site).changelist_view(
-            get(superuser, is_primary__exact="1")
+            get(self.user, is_primary__exact="1")
         )
         response.render()
 
         # Two primary images, on two pages: both are counted.
         assert values(tfoot(response.content.decode())) == {"title": "2"}
 
-    def test_page_scope(self, superuser, albums):
+    def test_page_scope(self):
         class ImageAdmin(FooterRowsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
             list_per_page = 2
             footer_rows = [("Total", {"title": Count("pk")})]
             footer_scope = "page"
 
-        response = ImageAdmin(Image, admin.site).changelist_view(get(superuser, p="2"))
+        response = ImageAdmin(Image, admin.site).changelist_view(get(self.user, p="2"))
         response.render()
 
         assert values(tfoot(response.content.decode())) == {"title": "1"}
 
-    def test_summary_when_a_column_isnt_in_the_table(self, superuser, albums):
+    def test_summary_when_a_column_isnt_in_the_table(self):
         class ImageAdmin(FooterRowsMixin, admin.ModelAdmin):
             list_display = ("title",)
 
@@ -214,7 +219,7 @@ class TestChangelist:
                     ("Primary", {"is_primary": Count("pk", filter=Q(is_primary=True))})
                 ]
 
-        response = ImageAdmin(Image, admin.site).changelist_view(get(superuser))
+        response = ImageAdmin(Image, admin.site).changelist_view(get(self.user))
         response.render()
 
         content = response.content.decode()
@@ -226,7 +231,7 @@ class TestChangelist:
             in content
         )
 
-    def test_format_footer_value(self, superuser, albums):
+    def test_format_footer_value(self):
         class ImageAdmin(FooterRowsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
             footer_rows = [
@@ -234,7 +239,7 @@ class TestChangelist:
                 ("B", {"title": 2.0, "album": mark_safe("<b>x</b>")}),
             ]
 
-        response = ImageAdmin(Image, admin.site).changelist_view(get(superuser))
+        response = ImageAdmin(Image, admin.site).changelist_view(get(self.user))
         response.render()
 
         footer = tfoot(response.content.decode())
@@ -242,8 +247,8 @@ class TestChangelist:
         assert ">2</span>" in footer
         assert "<b>x</b>" in footer
 
-    def test_changelist_without_footer_rows_is_untouched(self, admin_client, albums):
-        response = admin_client.get(reverse("admin:gallery_album_changelist"))
+    def test_changelist_without_footer_rows_is_untouched(self):
+        response = self.client.get(reverse("admin:gallery_album_changelist"))
         assert "<tfoot" not in response.content.decode()
         assert "django_admin_tables_footer" not in response.context_data
 
@@ -256,11 +261,26 @@ class TestChangelist:
         assert image_admin.footer_column_label("nope") == "nope"
 
 
-class TestInline:
-    def test_tabular_tfoot(self, admin_client, albums):
-        alps, _ = albums
-        response = admin_client.get(
-            reverse("admin:gallery_album_change", args=[alps.pk])
+class TestInline(TestCase):
+    """The footer on inlines."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        cls.alps = Album.objects.create(title="Alps")
+        cls.coast = Album.objects.create(title="Coast")
+        Image.objects.create(album=cls.alps, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.alps, title="Lake", is_featured=True)
+        Image.objects.create(album=cls.coast, title="Harbor", is_primary=True)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_tabular_tfoot(self):
+        response = self.client.get(
+            reverse("admin:gallery_album_change", args=[self.alps.pk])
         )
 
         content = response.content.decode()
@@ -269,16 +289,15 @@ class TestInline:
         assert values(footer) == {"title": "2", "is_primary": "1", "is_featured": "1"}
         assert content.index("<tfoot") > content.index('id="images-group"')
 
-    def test_add_view_keeps_the_structure_without_values(self, admin_client):
-        response = admin_client.get(reverse("admin:gallery_album_add"))
+    def test_add_view_keeps_the_structure_without_values(self):
+        response = self.client.get(reverse("admin:gallery_album_add"))
 
         footer = tfoot(response.content.decode())
         assert values(footer) == {"title": "", "is_primary": "", "is_featured": ""}
 
-    def test_stacked_inline_summary(self, admin_client, albums):
-        alps, _ = albums
-        response = admin_client.get(
-            reverse("admin:gallery_albumstacked_change", args=[alps.pk])
+    def test_stacked_inline_summary(self):
+        response = self.client.get(
+            reverse("admin:gallery_albumstacked_change", args=[self.alps.pk])
         )
 
         content = response.content.decode()
@@ -286,9 +305,7 @@ class TestInline:
         summary = content.split('class="django-admin-tables-footer-summary"')[1]
         assert values(summary.split("</div>")[0] + "</div>") == {"title": "2"}
 
-    def test_footer_queryset_hook(self, superuser, albums):
-        alps, _ = albums
-
+    def test_footer_queryset_hook(self):
         class Inline(FooterRowsMixin, admin.TabularInline):
             model = Image
             footer_rows = [("Total", {"title": Count("pk")})]
@@ -297,28 +314,58 @@ class TestInline:
                 return formset.get_queryset().filter(is_primary=True)
 
         inline = Inline(Album, admin.site)
-        request = get(superuser)
-        formset = inline.get_formset(request, alps)(instance=alps)
+        request = get(self.user)
+        formset = inline.get_formset(request, self.alps)(instance=self.alps)
 
-        rows = inline.inline_footer_rows(request, alps, formset)
+        rows = inline.inline_footer_rows(request, self.alps, formset)
 
         assert rows[0].cells[0].raw == "1"
         assert inline.template == "django_admin_tables/edit_inline.html"
         assert inline.django_admin_tables_inline["footer"] == {
             "request": request,
-            "obj": alps,
+            "obj": self.alps,
         }
 
-    def test_inline_without_footer_rows_is_untouched(self, superuser):
+    def test_inline_without_footer_rows_is_untouched(self):
         class Inline(FooterRowsMixin, admin.TabularInline):
             model = Image
 
         inline = Inline(Album, admin.site)
-        inline.get_formset(get(superuser))
+        inline.get_formset(get(self.user))
         assert inline.template == "admin/edit_inline/tabular.html"
 
+    def test_inline_with_responsive_columns_only(self):
+        """The inline's own template, untouched but for the media queries."""
+        from gallery.admin import AlbumAdmin, ImageTabularInline
 
-class TestMedia:
+        class Inline(ImageTabularInline):
+            footer_rows = ()
+
+        with mock.patch.object(AlbumAdmin, "inlines", [Inline]):
+            response = self.client.get(
+                reverse("admin:gallery_album_change", args=[self.alps.pk])
+            )
+
+        content = response.content.decode()
+        assert "django-admin-tables-responsive-images-group" in content
+        assert "<tfoot" not in content
+        assert 'id="images-group"' in content
+
+
+class TestFooterTag(SimpleTestCase):
+    """The footer template tag."""
+
+    def test_footer_tag_takes_the_rows(self):
+        with self.assertRaisesRegex(TemplateSyntaxError, "takes the footer rows"):
+            Template(
+                "{% load django_admin_tables %}"
+                "{% django_admin_tables_footer %}{% end_django_admin_tables_footer %}"
+            )
+
+
+class TestMedia(SimpleTestCase):
+    """The footer's CSS."""
+
     def test_css_only_with_footer_rows(self):
         class With(FooterRowsMixin, admin.ModelAdmin):
             footer_rows = [("Total", {"title": Count("pk")})]
@@ -343,7 +390,9 @@ class TestMedia:
         assert "footer-unfold.css" in media
 
 
-class TestChecks:
+class TestChecks(SimpleTestCase):
+    """The mixin's system checks."""
+
     def test_valid(self):
         class ImageAdmin(FooterRowsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
@@ -383,40 +432,25 @@ class TestChecks:
         assert Inline(Album, admin.site).check() == []
 
 
-def test_footer_tag_takes_the_rows():
-    from django.template import Template, TemplateSyntaxError
-
-    with pytest.raises(TemplateSyntaxError, match="takes the footer rows"):
-        Template(
-            "{% load django_admin_tables %}"
-            "{% django_admin_tables_footer %}{% end_django_admin_tables_footer %}"
-        )
-
-
-def test_inline_with_responsive_columns_only(admin_client, albums):
-    """The inline's own template, untouched but for the media queries."""
-    from gallery.admin import AlbumAdmin, ImageTabularInline
-
-    class Inline(ImageTabularInline):
-        footer_rows = ()
-
-    alps, _ = albums
-    with mock.patch.object(AlbumAdmin, "inlines", [Inline]):
-        response = admin_client.get(
-            reverse("admin:gallery_album_change", args=[alps.pk])
-        )
-
-    content = response.content.decode()
-    assert "django-admin-tables-responsive-images-group" in content
-    assert "<tfoot" not in content
-    assert 'id="images-group"' in content
-
-
-class TestWithInlineControls:
+class TestWithInlineControls(TestCase):
     """django-admin-inline-controls, recognized by its attributes: no
     dependency either way."""
 
-    def test_querysets_follow_its_filters_and_page(self, albums):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        cls.alps = Album.objects.create(title="Alps")
+        cls.coast = Album.objects.create(title="Coast")
+        Image.objects.create(album=cls.alps, title="Peak", is_primary=True)
+        Image.objects.create(album=cls.alps, title="Lake", is_featured=True)
+        Image.objects.create(album=cls.coast, title="Harbor", is_primary=True)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_querysets_follow_its_filters_and_page(self):
         from types import SimpleNamespace
 
         class Inline(FooterRowsMixin, admin.TabularInline):
@@ -439,7 +473,7 @@ class TestWithInlineControls:
         formset.inline_controls = None
         assert inline.get_inline_footer_queryset(None, formset, "filtered").count() == 3
 
-    def test_wraps_the_inline_template_inside_its_wrapper(self, superuser):
+    def test_wraps_the_inline_template_inside_its_wrapper(self):
         class Inline(FooterRowsMixin, admin.TabularInline):
             model = Image
             footer_rows = [("Total", {"title": Count("pk")})]
@@ -451,7 +485,7 @@ class TestWithInlineControls:
                 self.template = "django_admin_inline_controls/inline.html"
 
         inline = Inline(Album, admin.site)
-        inline.get_formset(get(superuser))
+        inline.get_formset(get(self.user))
 
         assert inline.template == "django_admin_inline_controls/inline.html"
         assert inline.inline_controls_inner_template == (

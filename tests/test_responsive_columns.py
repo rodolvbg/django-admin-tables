@@ -2,9 +2,11 @@ import json
 
 import pytest
 from django.contrib import admin
-from django.test import Client, RequestFactory
+from django.contrib.auth.models import User
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from gallery.models import Album, Image
+from unittest_parametrize import ParametrizedTestCase, parametrize
 
 from django_admin_tables import HideableColumnsMixin
 from django_admin_tables.columns.responsive import (
@@ -13,29 +15,6 @@ from django_admin_tables.columns.responsive import (
     max_width,
     media_rules,
 )
-
-pytestmark = pytest.mark.django_db
-
-
-@pytest.fixture
-def superuser(django_user_model):
-    return django_user_model.objects.create_superuser(
-        "admin", "admin@example.com", "password"
-    )
-
-
-@pytest.fixture
-def admin_client(superuser):
-    client = Client()
-    client.force_login(superuser)
-    return client
-
-
-@pytest.fixture
-def album():
-    album = Album.objects.create(title="Holiday")
-    Image.objects.create(album=album, title="Beach", is_primary=True)
-    return album
 
 
 def responsive_config(content, table):
@@ -47,14 +26,16 @@ def responsive_config(content, table):
     return json.loads(content.split(start)[1].split("</script>")[0])
 
 
-def get(superuser):
+def get(user):
     request = RequestFactory().get("/")
-    request.user = superuser
+    request.user = user
     return request
 
 
-class TestBreakpoints:
-    @pytest.mark.parametrize(
+class TestBreakpoints(ParametrizedTestCase, SimpleTestCase):
+    """Breakpoints and media rules."""
+
+    @parametrize(
         ("breakpoint", "expected"),
         [
             ("sm", 639.98),
@@ -67,9 +48,9 @@ class TestBreakpoints:
     def test_max_width(self, breakpoint, expected):
         assert max_width(breakpoint) == pytest.approx(expected)
 
-    @pytest.mark.parametrize("breakpoint", ["huge", 0, -10, True, 7.5, None])
+    @parametrize("breakpoint", [("huge",), (0,), (-10,), (True,), (7.5,), (None,)])
     def test_unknown(self, breakpoint):
-        with pytest.raises(ValueError, match="Unknown breakpoint"):
+        with self.assertRaisesRegex(ValueError, "Unknown breakpoint"):
             max_width(breakpoint)
 
     def test_names(self):
@@ -91,9 +72,22 @@ class TestBreakpoints:
         ]
 
 
-class TestChangelist:
-    def test_media_queries_for_list_display_columns(self, admin_client, album):
-        response = admin_client.get(reverse("admin:gallery_image_changelist"))
+class TestChangelist(TestCase):
+    """The responsive columns on the changelist."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        cls.album = Album.objects.create(title="Holiday")
+        Image.objects.create(album=cls.album, title="Beach", is_primary=True)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_media_queries_for_list_display_columns(self):
+        response = self.client.get(reverse("admin:gallery_image_changelist"))
 
         content = response.content.decode()
         assert responsive_config(content, "result_list") == {
@@ -104,12 +98,12 @@ class TestChangelist:
         # No <style>: a Content Security Policy needn't allow inline styles.
         assert "<style" not in content
 
-    def test_only_responsive_columns_skip_the_menu(self, superuser, album):
+    def test_only_responsive_columns_skip_the_menu(self):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
             responsive_columns = {"album": 900}
 
-        response = ImageAdmin(Image, admin.site).changelist_view(get(superuser))
+        response = ImageAdmin(Image, admin.site).changelist_view(get(self.user))
         response.render()
 
         content = response.content.decode()
@@ -119,14 +113,14 @@ class TestChangelist:
         assert 'id="django-admin-tables-columns"' not in content
         assert "columns.css" not in content
 
-    def test_responsive_columns_can_depend_on_the_request(self, superuser, album):
+    def test_responsive_columns_can_depend_on_the_request(self):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
 
             def get_responsive_columns(self, request, obj=None):
                 return {"album": "lg"} if request.user.is_superuser else {}
 
-        response = ImageAdmin(Image, admin.site).changelist_view(get(superuser))
+        response = ImageAdmin(Image, admin.site).changelist_view(get(self.user))
 
         rules = response.context_data["django_admin_tables_responsive"]
         assert [rule["classes"] for rule in rules] == [["album"]]
@@ -137,10 +131,23 @@ class ImageInline(HideableColumnsMixin, admin.TabularInline):
     responsive_columns = {"is_featured": "md", "is_primary": "lg"}
 
 
-class TestInline:
-    def test_media_queries_scoped_to_the_inline(self, admin_client, album):
-        response = admin_client.get(
-            reverse("admin:gallery_album_change", args=[album.pk])
+class TestInline(TestCase):
+    """The responsive columns on inlines."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        cls.album = Album.objects.create(title="Holiday")
+        Image.objects.create(album=cls.album, title="Beach", is_primary=True)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_media_queries_scoped_to_the_inline(self):
+        response = self.client.get(
+            reverse("admin:gallery_album_change", args=[self.album.pk])
         )
 
         content = response.content.decode()
@@ -156,9 +163,9 @@ class TestInline:
         assert 'class="field-is_featured"' in content
         assert "<style" not in content
 
-    def test_template_is_swapped_once(self, superuser):
+    def test_template_is_swapped_once(self):
         inline = ImageInline(Album, admin.site)
-        request = get(superuser)
+        request = get(self.user)
 
         inline.get_formset(request)
         inline.get_formset(request)
@@ -171,28 +178,30 @@ class TestInline:
             ["is_featured"],
         ]
 
-    def test_custom_inline_template_is_included(self, superuser):
+    def test_custom_inline_template_is_included(self):
         class Inline(ImageInline):
             template = "admin/edit_inline/stacked.html"
 
         inline = Inline(Album, admin.site)
-        inline.get_formset(get(superuser))
+        inline.get_formset(get(self.user))
 
         parent = inline.django_admin_tables_inline["parent"]
         assert parent.template.name == "admin/edit_inline/stacked.html"
 
-    def test_inline_without_responsive_columns_is_untouched(self, superuser):
+    def test_inline_without_responsive_columns_is_untouched(self):
         class Inline(HideableColumnsMixin, admin.TabularInline):
             model = Image
 
         inline = Inline(Album, admin.site)
-        inline.get_formset(get(superuser))
+        inline.get_formset(get(self.user))
 
         assert inline.template == "admin/edit_inline/tabular.html"
         assert not hasattr(inline, "django_admin_tables_inline")
 
 
-class TestChecks:
+class TestChecks(SimpleTestCase):
+    """The mixin's system checks."""
+
     def test_valid(self):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
             list_display = ("title", "album")

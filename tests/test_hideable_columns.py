@@ -3,47 +3,22 @@ import sys
 import types
 from unittest import mock
 
-import pytest
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.core import checks
 from django.template.response import TemplateResponse
-from django.test import Client, RequestFactory
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from gallery.models import Album, Image
 
 from django_admin_tables import HideableColumnsMixin
 
-pytestmark = pytest.mark.django_db
-
 INSTALLED = "django_admin_tables.columns.mixins.apps.is_installed"
 
 
-@pytest.fixture
-def superuser(django_user_model):
-    return django_user_model.objects.create_superuser(
-        "admin", "admin@example.com", "password"
-    )
-
-
-@pytest.fixture
-def admin_client(superuser):
-    client = Client()
-    client.force_login(superuser)
-    return client
-
-
-@pytest.fixture
-def images():
-    album = Album.objects.create(title="Holiday")
-    return [
-        Image.objects.create(album=album, title="Beach", is_primary=True),
-        Image.objects.create(album=album, title="City"),
-    ]
-
-
-def changelist(model_admin, superuser, **attrs):
+def changelist(model_admin, user, **attrs):
     request = RequestFactory().get("/")
-    request.user = superuser
+    request.user = user
     for name, value in attrs.items():
         setattr(request, name, value)
     response = model_admin.changelist_view(request)
@@ -59,11 +34,25 @@ def template_names(response):
     return [t.name for t in response.templates]
 
 
-class TestHideableColumnsMixin:
+class TestHideableColumnsMixin(TestCase):
     """The columns menu on the changelist."""
 
-    def test_changelist_gets_the_columns_menu(self, admin_client, images):
-        response = admin_client.get(reverse("admin:gallery_image_changelist"))
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
+        album = Album.objects.create(title="Holiday")
+        cls.images = [
+            Image.objects.create(album=album, title="Beach", is_primary=True),
+            Image.objects.create(album=album, title="City"),
+        ]
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_changelist_gets_the_columns_menu(self):
+        response = self.client.get(reverse("admin:gallery_image_changelist"))
 
         assert "django_admin_tables/change_list.html" in template_names(response)
         assert "admin/change_list.html" in template_names(response)
@@ -78,10 +67,8 @@ class TestHideableColumnsMixin:
         assert "django_admin_tables/columns.js" in content
         assert "django_admin_tables/columns.css" in content
 
-    def test_config_lists_the_hideable_columns_in_list_display_order(
-        self, admin_client, images
-    ):
-        response = admin_client.get(reverse("admin:gallery_image_changelist"))
+    def test_config_lists_the_hideable_columns_in_list_display_order(self):
+        response = self.client.get(reverse("admin:gallery_image_changelist"))
 
         columns = config_of(response)
         assert [c["name"] for c in columns["columns"]] == [
@@ -104,13 +91,13 @@ class TestHideableColumnsMixin:
         )[1]
         assert json.loads(script.split("</script>")[0]) == columns["config"]
 
-    def test_changelist_without_hideable_columns_is_untouched(self, admin_client):
-        response = admin_client.get(reverse("admin:gallery_album_changelist"))
+    def test_changelist_without_hideable_columns_is_untouched(self):
+        response = self.client.get(reverse("admin:gallery_album_changelist"))
 
         assert "django_admin_tables/change_list.html" not in template_names(response)
         assert "django_admin_tables_columns" not in response.context_data
 
-    def test_hideable_columns_can_depend_on_the_request(self, superuser, images):
+    def test_hideable_columns_can_depend_on_the_request(self):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
             list_display = ("title", "album", "is_primary")
 
@@ -124,13 +111,13 @@ class TestHideableColumnsMixin:
 
         assert (
             "django_admin_tables_columns"
-            not in changelist(image_admin, superuser).context_data
+            not in changelist(image_admin, self.user).context_data
         )
-        config = config_of(changelist(image_admin, superuser, hideable=True))["config"]
+        config = config_of(changelist(image_admin, self.user, hideable=True))["config"]
         assert config["columns"] == ["album"]
         assert config["hidden"] == ["album"]
 
-    def test_callables_get_the_admin_column_classes(self, superuser, images):
+    def test_callables_get_the_admin_column_classes(self):
         def shout(obj):
             return obj.title.upper()
 
@@ -142,7 +129,7 @@ class TestHideableColumnsMixin:
             def upper_title(self, obj):
                 return obj.title.upper()
 
-        response = changelist(ImageAdmin(Image, admin.site), superuser)
+        response = changelist(ImageAdmin(Image, admin.site), self.user)
 
         columns = config_of(response)["columns"]
         assert [(c["class"], c["label"]) for c in columns] == [
@@ -157,13 +144,13 @@ class TestHideableColumnsMixin:
             for prefix in ("column", "field")
         )
 
-    def test_custom_change_list_template_is_extended(self, superuser, images):
+    def test_custom_change_list_template_is_extended(self):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
             list_display_hideable = ("album",)
             change_list_template = "admin/custom_change_list.html"
 
-        response = changelist(ImageAdmin(Image, admin.site), superuser)
+        response = changelist(ImageAdmin(Image, admin.site), self.user)
 
         assert response.template_name == "django_admin_tables/change_list.html"
         parent = response.context_data["django_admin_tables_parent"]
@@ -172,7 +159,7 @@ class TestHideableColumnsMixin:
         assert 'id="custom-change-list"' in content
         assert "django-admin-tables-columns" in content
 
-    def test_responses_without_a_changelist_are_untouched(self, superuser):
+    def test_responses_without_a_changelist_are_untouched(self):
         """A ModelAdmin earlier in the MRO may render something else."""
 
         class Other(admin.ModelAdmin):
@@ -184,12 +171,12 @@ class TestHideableColumnsMixin:
             list_display_hideable = ("album",)
 
         request = RequestFactory().get("/")
-        request.user = superuser
+        request.user = self.user
         response = ImageAdmin(Image, admin.site).changelist_view(request)
 
         assert response.template_name == "admin/base.html"
 
-    def test_redirects_are_untouched(self, superuser, images):
+    def test_redirects_are_untouched(self):
         """Saving list_editable redirects: there's no template to swap."""
 
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
@@ -202,22 +189,22 @@ class TestHideableColumnsMixin:
             "form-INITIAL_FORMS": "2",
             "form-MIN_NUM_FORMS": "0",
             "form-MAX_NUM_FORMS": "1000",
-            "form-0-id": str(images[0].pk),
-            "form-1-id": str(images[1].pk),
+            "form-0-id": str(self.images[0].pk),
+            "form-1-id": str(self.images[1].pk),
             "form-1-is_primary": "on",
             "_save": "Save",
         }
         request = RequestFactory().post("/", data)
-        request.user = superuser
+        request.user = self.user
         request._dont_enforce_csrf_checks = True
         with mock.patch("django.contrib.admin.options.ModelAdmin.message_user"):
             response = ImageAdmin(Image, admin.site).changelist_view(request)
 
         assert response.status_code == 302
-        images[1].refresh_from_db()
-        assert images[1].is_primary
+        self.images[1].refresh_from_db()
+        assert self.images[1].is_primary
 
-    def test_unfold_menu(self, superuser, images):
+    def test_unfold_menu(self):
         fake = types.ModuleType("unfold.widgets")
         fake.CHECKBOX_CLASSES = ["appearance-none", "w-4"]
 
@@ -229,7 +216,7 @@ class TestHideableColumnsMixin:
             mock.patch(INSTALLED, side_effect=lambda app: app == "unfold"),
             mock.patch.dict(sys.modules, {"unfold.widgets": fake}),
         ):
-            response = changelist(ImageAdmin(Image, admin.site), superuser)
+            response = changelist(ImageAdmin(Image, admin.site), self.user)
 
         content = response.content.decode()
         assert "django-admin-tables-columns--unfold" in content
@@ -237,7 +224,9 @@ class TestHideableColumnsMixin:
         assert "view_column" in content
 
 
-class TestChecks:
+class TestChecks(SimpleTestCase):
+    """The mixin's system checks."""
+
     def test_valid(self):
         class ImageAdmin(HideableColumnsMixin, admin.ModelAdmin):
             list_display = ("title", "album")
