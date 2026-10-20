@@ -4,7 +4,8 @@ No database needed.
 
 from unittest import mock
 
-import pytest
+from django.test import SimpleTestCase
+from unittest_parametrize import ParametrizedTestCase, parametrize
 
 from django_admin_tables.radio_select import widgets
 from django_admin_tables.radio_select.widgets import RadioCheckboxInput
@@ -18,7 +19,7 @@ def _widget(**kwargs):
     return RadioCheckboxInput(**kwargs)
 
 
-class TestRadioCheckboxInput:
+class TestRadioCheckboxInput(ParametrizedTestCase, SimpleTestCase):
     """The exclusive radio widget."""
 
     def test_init_sets_the_data_attrs_for_field_name_and_group(self):
@@ -50,10 +51,10 @@ class TestRadioCheckboxInput:
         assert "checked" in widget.render("is_primary", True)
         assert "checked" not in widget.render("is_primary", False)
 
-    @pytest.mark.parametrize(
+    @parametrize(
         ("data", "expected"),
         [({}, False), ({"is_primary": "on"}, True)],
-        ids=["absent means False", "present means True"],
+        ids=["absent_means_false", "present_means_true"],
     )
     def test_value_from_datadict(self, data, expected):
         # Present in the POST data => True; absent => False. Exactly
@@ -68,7 +69,7 @@ class TestRadioCheckboxInput:
         assert any("django_admin_tables/radio-select.js" in p for p in js_paths)
 
 
-class TestThemeClasses:
+class TestThemeClasses(SimpleTestCase):
     """theme_classes, with and without Unfold."""
 
     def test_none_without_unfold(self):

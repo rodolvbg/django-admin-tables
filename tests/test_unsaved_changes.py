@@ -1,6 +1,6 @@
-import pytest
 from django.contrib import admin
-from django.test import Client
+from django.contrib.auth.models import User
+from django.test import TestCase
 from django.urls import reverse
 from gallery.models import Album
 
@@ -14,7 +14,7 @@ class Editable(UnsavedChangesMixin, admin.ModelAdmin):
     list_editable = ("is_featured",)
 
 
-class TestUnsavedChangesMixin:
+class TestUnsavedChangesMixin(TestCase):
     """Loading the unsaved-changes script on the changelist."""
 
     def test_with_list_editable(self):
@@ -32,10 +32,13 @@ class TestUnsavedChangesMixin:
 
         assert SCRIPT not in str(Admin(Album, admin.site).media)
 
-    @pytest.mark.django_db
-    def test_on_the_changelist(self, django_user_model):
-        user = django_user_model.objects.create_superuser("admin", "a@example.com", "x")
-        client = Client()
-        client.force_login(user)
-        response = client.get(reverse("admin:gallery_album_changelist"))
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser("admin", "a@example.com", "x")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_on_the_changelist(self):
+        response = self.client.get(reverse("admin:gallery_album_changelist"))
         assert SCRIPT in response.content.decode()

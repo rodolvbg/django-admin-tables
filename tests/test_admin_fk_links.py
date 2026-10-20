@@ -1,5 +1,5 @@
-import pytest
 from django.contrib import admin
+from django.test import TestCase
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -7,8 +7,6 @@ from django_admin_tables import ForeignKeyLinkMixin
 
 from .core.admin import CustomBookAdmin
 from .core.models import Author, Book
-
-pytestmark = pytest.mark.django_db
 
 
 def _author_link(book_admin, book):
@@ -20,7 +18,7 @@ def _author_link(book_admin, book):
     return fk_link(book)
 
 
-class TestForeignKeyLinkMixin:
+class TestForeignKeyLinkMixin(TestCase):
     """Foreign key columns rendered as admin links."""
 
     def test_list_display_replaces_fk_with_callable_and_keeps_others(self):

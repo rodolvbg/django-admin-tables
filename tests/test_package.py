@@ -1,3 +1,5 @@
+from django.test import SimpleTestCase
+
 import django_admin_tables
 from django_admin_tables import (
     AdminTablesMixin,
@@ -16,7 +18,7 @@ from django_admin_tables.radio_select.mixins import (
 )
 
 
-class TestPackage:
+class TestPackage(SimpleTestCase):
     """Public API and importability of the package."""
 
     def test_public_api_is_importable_from_top_level_package(self):

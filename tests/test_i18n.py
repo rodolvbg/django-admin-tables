@@ -5,13 +5,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from django.test import Client
+from django.contrib.auth.models import User
+from django.test import TestCase
 from django.urls import reverse
 from django.utils import translation
 from gallery.models import Album, Image
 
 LOCALE_DIR = Path(__file__).parent.parent / "src/django_admin_tables/locale"
 CATALOGS = sorted(LOCALE_DIR.glob("*/LC_MESSAGES/django.po"))
+CATALOG_IDS = [c.parent.parent.name for c in CATALOGS]
 
 
 def po_entries(path):
@@ -64,10 +66,10 @@ def mo_messages(path):
     return {key: value for key, value in catalog.items() if key != ""}
 
 
+@pytest.mark.parametrize("catalog", CATALOGS, ids=CATALOG_IDS)
 class TestCatalogs:
     """Shipped translation catalogs are complete and compiled."""
 
-    @pytest.mark.parametrize("catalog", CATALOGS, ids=lambda c: c.parent.parent.name)
     def test_every_message_is_translated(self, catalog):
         problems = [
             msgid
@@ -76,7 +78,6 @@ class TestCatalogs:
         ]
         assert problems == []
 
-    @pytest.mark.parametrize("catalog", CATALOGS, ids=lambda c: c.parent.parent.name)
     def test_compiled_catalog_is_up_to_date(self, catalog):
         """The shipped .mo has exactly the .po's translations (not compared by
         date: a git checkout gives both files arbitrary modification times)."""
@@ -86,27 +87,21 @@ class TestCatalogs:
         assert mo_messages(compiled) == po_messages(catalog)
 
 
-@pytest.fixture
-def admin_client(django_user_model):
-    user = django_user_model.objects.create_superuser("admin", "a@example.com", "x")
-    client = Client()
-    client.force_login(user)
-    return client
-
-
-@pytest.fixture
-def album(db):
-    album = Album.objects.create(title="Alps")
-    Image.objects.create(album=album, title="Peak", is_primary=True)
-    return album
-
-
-class TestSpanishTranslations:
+class TestSpanishTranslations(TestCase):
     """Rendered output in Spanish."""
 
-    def test_changelist_in_spanish(self, admin_client, album):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser("admin", "a@example.com", "x")
+        cls.album = Album.objects.create(title="Alps")
+        Image.objects.create(album=cls.album, title="Peak", is_primary=True)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_changelist_in_spanish(self):
         with translation.override("es"):
-            response = admin_client.get(reverse("admin:gallery_image_changelist"))
+            response = self.client.get(reverse("admin:gallery_image_changelist"))
         html = response.content.decode()
 
         assert "Columnas" in html
@@ -118,11 +113,11 @@ class TestSpanishTranslations:
         assert 'data-unsaved="Hay cambios sin guardar en esta página' in html
         assert 'data-failed="No se pudo ejecutar la acción."' in html
 
-    def test_row_action_messages_in_spanish(self, admin_client, album):
-        peak = album.images.get()
+    def test_row_action_messages_in_spanish(self):
+        peak = self.album.images.get()
         url = reverse("admin:gallery_image_row_action", args=[peak.pk, "delete"])
         with translation.override("es"):
-            response = admin_client.post(
+            response = self.client.post(
                 url, headers={"x-requested-with": "XMLHttpRequest"}
             )
 
