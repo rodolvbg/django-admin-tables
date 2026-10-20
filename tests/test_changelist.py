@@ -45,36 +45,37 @@ def _base_post_data(albums):
     return data
 
 
-def test_changelist_renders_radio_inputs(admin_client, albums):
-    response = admin_client.get(reverse("admin:gallery_album_changelist"))
+class TestChangelistRadioIntegration:
+    """Exclusive radios through the changelist admin view."""
 
-    assert response.status_code == 200
-    content = response.content.decode()
-    assert 'type="radio"' in content
-    assert 'data-radio-select-group="form::is_featured"' in content
+    def test_changelist_renders_radio_inputs(self, admin_client, albums):
+        response = admin_client.get(reverse("admin:gallery_album_changelist"))
 
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'type="radio"' in content
+        assert 'data-radio-select-group="form::is_featured"' in content
 
-def test_switching_the_featured_album_and_saving_persists_through_the_admin_view(
-    admin_client, albums
-):
-    data = _base_post_data(albums)
-    del data["form-0-is_featured"]  # Winter was featured
-    data["form-1-is_featured"] = "on"  # Spring becomes featured
+    def test_switching_the_featured_album_and_saving_persists_through_the_admin_view(
+        self, admin_client, albums
+    ):
+        data = _base_post_data(albums)
+        del data["form-0-is_featured"]  # Winter was featured
+        data["form-1-is_featured"] = "on"  # Spring becomes featured
 
-    response = admin_client.post(reverse("admin:gallery_album_changelist"), data)
+        response = admin_client.post(reverse("admin:gallery_album_changelist"), data)
 
-    assert response.status_code == 302
-    featured = {album.title: album.is_featured for album in Album.objects.all()}
-    assert featured == {"Winter": False, "Spring": True, "Summer": False}
+        assert response.status_code == 302
+        featured = {album.title: album.is_featured for album in Album.objects.all()}
+        assert featured == {"Winter": False, "Spring": True, "Summer": False}
 
+    def test_posting_two_featured_albums_is_rejected_by_the_admin_view(
+        self, admin_client, albums
+    ):
+        data = _base_post_data(albums)
+        data["form-1-is_featured"] = "on"  # Winter already featured; now Spring too
 
-def test_posting_two_featured_albums_is_rejected_by_the_admin_view(
-    admin_client, albums
-):
-    data = _base_post_data(albums)
-    data["form-1-is_featured"] = "on"  # Winter already featured; now Spring too
+        response = admin_client.post(reverse("admin:gallery_album_changelist"), data)
 
-    response = admin_client.post(reverse("admin:gallery_album_changelist"), data)
-
-    assert response.status_code == 200  # re-rendered with errors, not redirected
-    assert not Album.objects.get(title="Spring").is_featured
+        assert response.status_code == 200  # re-rendered with errors, not redirected
+        assert not Album.objects.get(title="Spring").is_featured

@@ -16,28 +16,29 @@ from django_admin_tables.radio_select.mixins import (
 )
 
 
-def test_public_api_is_importable_from_top_level_package():
-    assert ExclusiveRadioFieldsMixin is RadioFromModule
-    assert ForeignKeyLinkMixin is LinksFromModule
-    assert AdminTablesMixin is RowsFromModule
-    assert django_admin_tables.__all__ == [
-        "AdminTablesMixin",
-        "ExclusiveRadioFieldsMixin",
-        "FooterRowsMixin",
-        "ForeignKeyLinkMixin",
-        "HideableColumnsMixin",
-        "RowActionsMixin",
-        "UnsavedChangesMixin",
-        "row_action",
-    ]
+class TestPackage:
+    """Public API and importability of the package."""
 
+    def test_public_api_is_importable_from_top_level_package(self):
+        assert ExclusiveRadioFieldsMixin is RadioFromModule
+        assert ForeignKeyLinkMixin is LinksFromModule
+        assert AdminTablesMixin is RowsFromModule
+        assert django_admin_tables.__all__ == [
+            "AdminTablesMixin",
+            "ExclusiveRadioFieldsMixin",
+            "FooterRowsMixin",
+            "ForeignKeyLinkMixin",
+            "HideableColumnsMixin",
+            "RowActionsMixin",
+            "UnsavedChangesMixin",
+            "row_action",
+        ]
 
-def test_package_exposes_a_version():
-    assert isinstance(django_admin_tables.__version__, str)
-    assert django_admin_tables.__version__
+    def test_package_exposes_a_version(self):
+        assert isinstance(django_admin_tables.__version__, str)
+        assert django_admin_tables.__version__
 
-
-def test_internal_modules_are_importable():
-    assert callable(make_radio_select_exclusive_formset)
-    assert issubclass(RadioCheckboxInput, object)
-    assert UNFOLD_LINK_CLASS
+    def test_internal_modules_are_importable(self):
+        assert callable(make_radio_select_exclusive_formset)
+        assert issubclass(RadioCheckboxInput, object)
+        assert UNFOLD_LINK_CLASS

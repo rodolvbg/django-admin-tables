@@ -185,7 +185,17 @@ class TestSpecs:
         assert image_admin.get_row_action_specs(get(superuser), None) == {}
         assert image_admin.get_row_action_specs(get(superuser), Image()) == {}
 
-    def test_run_each_form(self, superuser, album, peak):
+    @pytest.mark.parametrize(
+        ("kind", "expected"),
+        [
+            ("one", lambda admin_, peak, album: [("one", peak)]),
+            ("with_parent", lambda admin_, peak, album: [("with_parent", peak, album)]),
+            ("many", lambda admin_, peak, album: [("many", [peak])]),
+            ("plain", lambda admin_, peak, album: [("plain", admin_, peak)]),
+            ("bound", lambda admin_, peak, album: [("one", peak)]),
+        ],
+    )
+    def test_run_each_form(self, superuser, album, peak, kind, expected):
         calls = []
 
         class Admin(RowActionsMixin, admin.ModelAdmin):
@@ -202,24 +212,18 @@ class TestSpecs:
             calls.append(("plain", model_admin, obj))
 
         image_admin = Admin(Image, admin.site)
-        request = get(superuser)
-        for name, function in [
-            ("one", Admin.one),
-            ("with_parent", Admin.with_parent),
-            ("many", Admin.many),
-            ("plain", plain),
-            ("bound", image_admin.one),
-        ]:
-            spec = RowActionSpec(name, function, name, "", "", None)
-            run_row_action(image_admin, request, spec, peak, album)
+        function = {
+            "one": Admin.one,
+            "with_parent": Admin.with_parent,
+            "many": Admin.many,
+            "plain": plain,
+            "bound": image_admin.one,
+        }[kind]
+        spec = RowActionSpec(kind, function, kind, "", "", None)
 
-        assert calls == [
-            ("one", peak),
-            ("with_parent", peak, album),
-            ("many", [peak]),
-            ("plain", image_admin, peak),
-            ("one", peak),
-        ]
+        run_row_action(image_admin, get(superuser), spec, peak, album)
+
+        assert calls == expected(image_admin, peak, album)
 
 
 class TestChangelist:

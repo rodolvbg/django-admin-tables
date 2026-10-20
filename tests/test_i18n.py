@@ -64,24 +64,26 @@ def mo_messages(path):
     return {key: value for key, value in catalog.items() if key != ""}
 
 
-@pytest.mark.parametrize("catalog", CATALOGS, ids=lambda c: c.parent.parent.name)
-def test_every_message_is_translated(catalog):
-    problems = [
-        msgid
-        for msgid, msgstrs, fuzzy in po_entries(catalog)
-        if fuzzy or not all(s.strip() for s in msgstrs)
-    ]
-    assert problems == []
+class TestCatalogs:
+    """Shipped translation catalogs are complete and compiled."""
 
+    @pytest.mark.parametrize("catalog", CATALOGS, ids=lambda c: c.parent.parent.name)
+    def test_every_message_is_translated(self, catalog):
+        problems = [
+            msgid
+            for msgid, msgstrs, fuzzy in po_entries(catalog)
+            if fuzzy or not all(s.strip() for s in msgstrs)
+        ]
+        assert problems == []
 
-@pytest.mark.parametrize("catalog", CATALOGS, ids=lambda c: c.parent.parent.name)
-def test_compiled_catalog_is_up_to_date(catalog):
-    """The shipped .mo has exactly the .po's translations (not compared by
-    date: a git checkout gives both files arbitrary modification times)."""
-    compiled = catalog.with_suffix(".mo")
+    @pytest.mark.parametrize("catalog", CATALOGS, ids=lambda c: c.parent.parent.name)
+    def test_compiled_catalog_is_up_to_date(self, catalog):
+        """The shipped .mo has exactly the .po's translations (not compared by
+        date: a git checkout gives both files arbitrary modification times)."""
+        compiled = catalog.with_suffix(".mo")
 
-    assert compiled.exists()
-    assert mo_messages(compiled) == po_messages(catalog)
+        assert compiled.exists()
+        assert mo_messages(compiled) == po_messages(catalog)
 
 
 @pytest.fixture
@@ -99,27 +101,29 @@ def album(db):
     return album
 
 
-def test_changelist_in_spanish(admin_client, album):
-    with translation.override("es"):
-        response = admin_client.get(reverse("admin:gallery_image_changelist"))
-    html = response.content.decode()
+class TestSpanishTranslations:
+    """Rendered output in Spanish."""
 
-    assert "Columnas" in html
-    assert "<legend>Mostrar columnas</legend>" in html
-    assert "(pantalla estrecha)" in html
-    assert ">Acciones<" in html
-    assert ">Ver</a>" in html
-    assert 'data-confirmation="¿Eliminar «Peak»? No se puede deshacer."' in html
-    assert 'data-unsaved="Hay cambios sin guardar en esta página' in html
-    assert 'data-failed="No se pudo ejecutar la acción."' in html
+    def test_changelist_in_spanish(self, admin_client, album):
+        with translation.override("es"):
+            response = admin_client.get(reverse("admin:gallery_image_changelist"))
+        html = response.content.decode()
 
+        assert "Columnas" in html
+        assert "<legend>Mostrar columnas</legend>" in html
+        assert "(pantalla estrecha)" in html
+        assert ">Acciones<" in html
+        assert ">Ver</a>" in html
+        assert 'data-confirmation="¿Eliminar «Peak»? No se puede deshacer."' in html
+        assert 'data-unsaved="Hay cambios sin guardar en esta página' in html
+        assert 'data-failed="No se pudo ejecutar la acción."' in html
 
-def test_row_action_messages_in_spanish(admin_client, album):
-    peak = album.images.get()
-    url = reverse("admin:gallery_image_row_action", args=[peak.pk, "delete"])
-    with translation.override("es"):
-        response = admin_client.post(
-            url, headers={"x-requested-with": "XMLHttpRequest"}
-        )
+    def test_row_action_messages_in_spanish(self, admin_client, album):
+        peak = album.images.get()
+        url = reverse("admin:gallery_image_row_action", args=[peak.pk, "delete"])
+        with translation.override("es"):
+            response = admin_client.post(
+                url, headers={"x-requested-with": "XMLHttpRequest"}
+            )
 
-    assert response.json() == {"status": "done", "message": "Se eliminó «Peak»."}
+        assert response.json() == {"status": "done", "message": "Se eliminó «Peak»."}

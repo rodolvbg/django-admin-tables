@@ -73,119 +73,119 @@ def build_formset(request_, site, album, data):
     return formset_class(data, instance=album)
 
 
-def test_single_selected_row_is_valid(request_, site, album):
-    data = management_data(album, rows={0: {"is_primary": True}})
-    formset = build_formset(request_, site, album, data)
+class TestExclusiveRadioFormSet:
+    """Exactly-one-selected validation of the exclusive formset."""
 
-    assert formset.is_valid(), formset.errors
+    def test_single_selected_row_is_valid(self, request_, site, album):
+        data = management_data(album, rows={0: {"is_primary": True}})
+        formset = build_formset(request_, site, album, data)
 
+        assert formset.is_valid(), formset.errors
 
-def test_no_selected_row_is_valid(request_, site, album):
-    data = management_data(album)
-    formset = build_formset(request_, site, album, data)
+    def test_no_selected_row_is_valid(self, request_, site, album):
+        data = management_data(album)
+        formset = build_formset(request_, site, album, data)
 
-    assert formset.is_valid(), formset.errors
+        assert formset.is_valid(), formset.errors
 
+    def test_malformed_post_with_two_true_rows_is_rejected(self, request_, site, album):
+        data = management_data(
+            album, rows={0: {"is_primary": True}, 1: {"is_primary": True}}
+        )
+        formset = build_formset(request_, site, album, data)
 
-def test_malformed_post_with_two_true_rows_is_rejected(request_, site, album):
-    data = management_data(
-        album, rows={0: {"is_primary": True}, 1: {"is_primary": True}}
-    )
-    formset = build_formset(request_, site, album, data)
+        assert not formset.is_valid()
+        assert any("is_primary" in str(error) for error in formset.non_form_errors())
 
-    assert not formset.is_valid()
-    assert any("is_primary" in str(error) for error in formset.non_form_errors())
+    def test_two_true_rows_on_different_fields_is_valid(self, request_, site, album):
+        # is_primary and is_featured are independent groups: one True each
+        # is fine even though it's the same two rows.
+        data = management_data(
+            album, rows={0: {"is_primary": True}, 1: {"is_featured": True}}
+        )
+        formset = build_formset(request_, site, album, data)
 
+        assert formset.is_valid(), formset.errors
 
-def test_two_true_rows_on_different_fields_is_valid(request_, site, album):
-    # is_primary and is_featured are independent groups: one True each
-    # is fine even though it's the same two rows.
-    data = management_data(
-        album, rows={0: {"is_primary": True}, 1: {"is_featured": True}}
-    )
-    formset = build_formset(request_, site, album, data)
+    def test_row_marked_for_deletion_is_excluded_from_the_count(
+        self, request_, site, album
+    ):
+        data = management_data(
+            album,
+            rows={0: {"is_primary": True, "delete": True}, 1: {"is_primary": True}},
+        )
+        formset = build_formset(request_, site, album, data)
 
-    assert formset.is_valid(), formset.errors
+        assert formset.is_valid(), formset.errors
 
+    def test_saving_a_valid_formset_persists_exactly_one_true_row(
+        self, request_, site, album
+    ):
+        data = management_data(album, rows={1: {"is_primary": True}})
+        formset = build_formset(request_, site, album, data)
 
-def test_row_marked_for_deletion_is_excluded_from_the_count(request_, site, album):
-    data = management_data(
-        album, rows={0: {"is_primary": True, "delete": True}, 1: {"is_primary": True}}
-    )
-    formset = build_formset(request_, site, album, data)
+        assert formset.is_valid(), formset.errors
+        formset.save()
 
-    assert formset.is_valid(), formset.errors
+        images = {image.title: image.is_primary for image in album.images.all()}
+        assert images == {"A": False, "B": True}
 
+    def test_dynamically_added_row_can_be_submitted_and_becomes_the_selected_one(
+        self, request_, site, album
+    ):
+        # What Django admin's "Add another" produces client-side: an extra
+        # form beyond INITIAL_FORMS, with no "id" (new row) and a title.
+        data = management_data(album, extra_forms=1)
+        data["images-2-id"] = ""
+        data["images-2-album"] = str(album.pk)
+        data["images-2-title"] = "C"
+        data["images-2-is_primary"] = "on"
 
-def test_saving_a_valid_formset_persists_exactly_one_true_row(request_, site, album):
-    data = management_data(album, rows={1: {"is_primary": True}})
-    formset = build_formset(request_, site, album, data)
+        formset = build_formset(request_, site, album, data)
+        assert formset.is_valid(), formset.errors
+        formset.save()
 
-    assert formset.is_valid(), formset.errors
-    formset.save()
+        images = {image.title: image.is_primary for image in album.images.all()}
+        assert images == {"A": False, "B": False, "C": True}
 
-    images = {image.title: image.is_primary for image in album.images.all()}
-    assert images == {"A": False, "B": True}
+    def test_exclusivity_check_is_skipped_when_a_row_already_has_field_errors(
+        self, request_, site, album
+    ):
+        # If a row's own fields are invalid, our formset-level clean() must
+        # not layer a second, more confusing error on top of it.
+        data = management_data(
+            album, rows={0: {"is_primary": True}, 1: {"is_primary": True}}
+        )
+        data["images-0-title"] = ""  # title is required: this row is already invalid
 
+        formset = build_formset(request_, site, album, data)
 
-def test_dynamically_added_row_can_be_submitted_and_becomes_the_selected_one(
-    request_, site, album
-):
-    # What Django admin's "Add another" produces client-side: an extra
-    # form beyond INITIAL_FORMS, with no "id" (new row) and a title.
-    data = management_data(album, extra_forms=1)
-    data["images-2-id"] = ""
-    data["images-2-album"] = str(album.pk)
-    data["images-2-title"] = "C"
-    data["images-2-is_primary"] = "on"
+        assert not formset.is_valid()
+        assert formset.errors[0].get("title")
+        assert formset.non_form_errors() == []
 
-    formset = build_formset(request_, site, album, data)
-    assert formset.is_valid(), formset.errors
-    formset.save()
+    def test_user_supplied_formset_clean_is_preserved(self, request_, site, album):
+        from django.forms.models import BaseInlineFormSet
 
-    images = {image.title: image.is_primary for image in album.images.all()}
-    assert images == {"A": False, "B": False, "C": True}
+        calls = []
 
+        class CustomFormSet(BaseInlineFormSet):
+            def clean(self):
+                super().clean()
+                calls.append("custom-clean-ran")
 
-def test_exclusivity_check_is_skipped_when_a_row_already_has_field_errors(
-    request_, site, album
-):
-    # If a row's own fields are invalid, our formset-level clean() must
-    # not layer a second, more confusing error on top of it.
-    data = management_data(
-        album, rows={0: {"is_primary": True}, 1: {"is_primary": True}}
-    )
-    data["images-0-title"] = ""  # title is required: this row is already invalid
+        class CustomInline(ExclusiveRadioFieldsMixin, djadmin.TabularInline):
+            model = Image
+            formset = CustomFormSet
+            radio_select_exclusive_fields = ("is_primary",)
 
-    formset = build_formset(request_, site, album, data)
+        inline = CustomInline(Album, site)
+        formset_class = inline.get_formset(request_)
 
-    assert not formset.is_valid()
-    assert formset.errors[0].get("title")
-    assert formset.non_form_errors() == []
+        data = management_data(
+            album, rows={0: {"is_primary": True}, 1: {"is_primary": True}}
+        )
+        formset = formset_class(data, instance=album)
 
-
-def test_user_supplied_formset_clean_is_preserved(request_, site, album):
-    from django.forms.models import BaseInlineFormSet
-
-    calls = []
-
-    class CustomFormSet(BaseInlineFormSet):
-        def clean(self):
-            super().clean()
-            calls.append("custom-clean-ran")
-
-    class CustomInline(ExclusiveRadioFieldsMixin, djadmin.TabularInline):
-        model = Image
-        formset = CustomFormSet
-        radio_select_exclusive_fields = ("is_primary",)
-
-    inline = CustomInline(Album, site)
-    formset_class = inline.get_formset(request_)
-
-    data = management_data(
-        album, rows={0: {"is_primary": True}, 1: {"is_primary": True}}
-    )
-    formset = formset_class(data, instance=album)
-
-    assert not formset.is_valid()
-    assert calls == ["custom-clean-ran"]
+        assert not formset.is_valid()
+        assert calls == ["custom-clean-ran"]

@@ -33,33 +33,37 @@ class ImageInline(AdminTablesMixin, admin.TabularInline):
     radio_select_exclusive_fields = ("is_primary",)
 
 
-def test_combines_both_mixins():
-    assert issubclass(AdminTablesMixin, ForeignKeyLinkMixin)
-    assert issubclass(AdminTablesMixin, ExclusiveRadioFieldsMixin)
+class TestAdminTablesMixin:
+    """The combined links and radios mixin."""
 
+    def test_combines_both_mixins(self):
+        assert issubclass(AdminTablesMixin, ForeignKeyLinkMixin)
+        assert issubclass(AdminTablesMixin, ExclusiveRadioFieldsMixin)
 
-def test_model_admin_gets_links_and_radios(request_):
-    image_admin = ImageAdmin(Image, admin.site)
+    def test_model_admin_gets_links_and_radios(self, request_):
+        image_admin = ImageAdmin(Image, admin.site)
 
-    list_display = image_admin.get_list_display(request_)
-    assert list_display[0] == "title"
-    assert getattr(list_display[1], "__name__", "") == "album_link"
-    assert list_display[2] == "is_primary"
+        list_display = image_admin.get_list_display(request_)
+        assert list_display[0] == "title"
+        assert getattr(list_display[1], "__name__", "") == "album_link"
+        assert list_display[2] == "is_primary"
 
-    formset = image_admin.get_changelist_formset(request_)
-    assert isinstance(formset.form.base_fields["is_primary"].widget, RadioCheckboxInput)
+        formset = image_admin.get_changelist_formset(request_)
+        assert isinstance(
+            formset.form.base_fields["is_primary"].widget, RadioCheckboxInput
+        )
 
+    def test_model_admin_keeps_list_editable_fields_as_fields(self, request_):
+        class Admin(ImageAdmin):
+            list_display_foreign_key_links = ("album", "is_primary")
 
-def test_model_admin_keeps_list_editable_fields_as_fields(request_):
-    class Admin(ImageAdmin):
-        list_display_foreign_key_links = ("album", "is_primary")
+        assert Admin(Image, admin.site).get_list_display(request_)[2] == "is_primary"
 
-    assert Admin(Image, admin.site).get_list_display(request_)[2] == "is_primary"
+    def test_inline_gets_radios(self, request_):
+        inline = ImageInline(Album, admin.site)
 
-
-def test_inline_gets_radios(request_):
-    inline = ImageInline(Album, admin.site)
-
-    assert isinstance(inline, admin.TabularInline)
-    formset = inline.get_formset(request_)
-    assert isinstance(formset.form.base_fields["is_primary"].widget, RadioCheckboxInput)
+        assert isinstance(inline, admin.TabularInline)
+        formset = inline.get_formset(request_)
+        assert isinstance(
+            formset.form.base_fields["is_primary"].widget, RadioCheckboxInput
+        )
