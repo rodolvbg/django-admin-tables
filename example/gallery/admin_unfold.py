@@ -83,6 +83,17 @@ class ImageAdmin(AdminTablesMixin, ModelAdmin):
         ),
     ]
 
+    # An album's primary image can't be selected for an action (deleted,
+    # say): choose another one first.
+    def is_row_selectable(self, request, obj):
+        return not obj.is_primary
+
+    def get_row_unselectable_reason(self, request, obj):
+        return "The album's primary image: choose another one first."
+
+    def filter_selectable_rows(self, request, queryset):
+        return queryset.filter(is_primary=False)
+
     @row_action(permissions=["change"])
     def toggle_featured(self, request, obj):
         obj.is_featured = not obj.is_featured

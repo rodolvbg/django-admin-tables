@@ -22,6 +22,8 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
   on the changelist and in inlines.
 - **[Row actions](#row-actions)** — buttons on each row ("Feature",
   "Delete"…), on the changelist and in inlines.
+- **[Selectable rows](#selectable-rows)** — which rows of the changelist
+  can be selected for an action, object by object.
 - **[Unsaved changes](#unsaved-changes)** — the changelist asks before
   losing `list_editable` edits.
 
@@ -76,7 +78,8 @@ Foreign key links and hideable columns only apply to a `ModelAdmin`'s
 changelist (an inline has no `list_display`). Each extra's mixin is
 available on its own too: `ExclusiveRadioFieldsMixin`,
 `ForeignKeyLinkMixin`, `HideableColumnsMixin` (hideable and responsive
-columns), `FooterRowsMixin`, `RowActionsMixin` and `UnsavedChangesMixin`.
+columns), `FooterRowsMixin`, `RowActionsMixin`, `SelectableRowsMixin` and
+`UnsavedChangesMixin`.
 
 ## Exclusive radio fields
 
@@ -449,6 +452,40 @@ Override `row_actions_template` (extending
 `django_admin_tables/row_actions.html`) to change the markup. System
 checks report an action that isn't a method nor a built-in one
 (`django_admin_tables.E008`).
+
+## Selectable rows
+
+Some objects shouldn't be acted on: an archived invoice, the album's
+primary image. `is_row_selectable()` says which rows of the changelist can
+be selected for an action:
+
+```python
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
+    def is_row_selectable(self, request, obj):
+        return not obj.is_primary
+
+    def get_row_unselectable_reason(self, request, obj):  # optional
+        return _("The album's primary image: choose another one first.")
+
+    def filter_selectable_rows(self, request, queryset):  # optional, faster
+        return queryset.filter(is_primary=False)
+```
+
+- The checkbox of a row that can't be selected is disabled, with the
+  reason as its title (on hover, and read by screen readers). "Select
+  all" leaves it out, and the counter only counts the others ("2 of 2
+  selected").
+- Actions never get those objects: not through "Select all 250 images",
+  nor through a request made by hand. They're left out, with a warning
+  ("1 image was left out: it can't be selected."); if nothing is left,
+  the action doesn't run.
+- `filter_selectable_rows()` is what actions go through. By default it
+  asks `is_row_selectable()` object by object, loading them: on a large
+  changelist, override it with the same rule as a filter of the database.
+- It applies to every action, the site's ("Delete selected") included, and
+  on Django 6.1+ to the actions of an object's page too.
+
+![A changelist where the primary image's checkbox is disabled, with its reason, and the other two selected](docs/screenshots/selectable-rows.png)
 
 ## Unsaved changes
 

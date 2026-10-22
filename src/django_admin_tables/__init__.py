@@ -6,6 +6,7 @@ from .footer import FooterRowsMixin
 from .mixins import AdminTablesMixin
 from .radio_select import ExclusiveRadioFieldsMixin
 from .row_actions import RowActionsMixin, row_action
+from .selection import SelectableRowsMixin
 from .unsaved import UnsavedChangesMixin
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "ForeignKeyLinkMixin",
     "HideableColumnsMixin",
     "RowActionsMixin",
+    "SelectableRowsMixin",
     "UnsavedChangesMixin",
     "row_action",
 ]

@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: django-admin-tables 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-16 23:02+0000\n"
+"POT-Creation-Date: 2026-10-22 12:26+0200\n"
 "PO-Revision-Date: 2026-10-17 01:00+0200\n"
 "Last-Translator: Rodolfo Becerra\n"
 "Language-Team: Spanish\n"
@@ -42,6 +42,14 @@ msgstr "Se eliminó «%(object)s»."
 #: row_actions/mixins.py
 msgid "Actions"
 msgstr "Acciones"
+
+#: selection.py
+#, python-format
+msgid "%(count)d %(name)s was left out: it can't be selected."
+msgid_plural "%(count)d %(name)s were left out: they can't be selected."
+msgstr[0] "Se dejó fuera %(count)d %(name)s: no se puede seleccionar."
+msgstr[1] "Se dejaron fuera %(count)d %(name)s: no se pueden seleccionar."
+msgstr[2] "Se dejaron fuera %(count)d %(name)s: no se pueden seleccionar."
 
 #: templates/django_admin_tables/columns_menu.html
 msgid "Columns"

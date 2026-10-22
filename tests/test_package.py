@@ -32,6 +32,7 @@ class TestPackage(SimpleTestCase):
             "ForeignKeyLinkMixin",
             "HideableColumnsMixin",
             "RowActionsMixin",
+            "SelectableRowsMixin",
             "UnsavedChangesMixin",
             "row_action",
         ]

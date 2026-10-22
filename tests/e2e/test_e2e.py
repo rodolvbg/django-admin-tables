@@ -411,3 +411,31 @@ class TestUnsavedChanges(_AdminE2ETestCase):
         expect(self.page.locator(".messagelist")).to_be_visible()
         assert dialogs == ["beforeunload"]
         assert Album.objects.get(title="Spring").is_featured
+
+
+class TestSelectableRows(_AdminE2ETestCase):
+    """The example's ImageAdmin: an album's primary image can't be selected."""
+
+    def test_select_all_leaves_out_the_rows_that_cant_be_selected(self):
+        self.create_album(images=(("Cover", True), ("Beach", False), ("City", False)))
+        self.login()
+        page = self.page
+        page.goto(f"{self.live_server_url}/admin/gallery/image/")
+
+        cover = page.locator("tr", has_text="Cover").locator("td.action-checkbox input")
+        expect(cover).to_be_disabled()
+        expect(cover).to_have_attribute(
+            "title", "The album's primary image: choose another one first."
+        )
+
+        expect(page.locator(".action-counter")).to_contain_text("0 of 2 selected")
+        page.check("#action-toggle")
+        expect(page.locator("input.action-select:checked")).to_have_count(2)
+        expect(cover).not_to_be_checked()
+        expect(page.locator(".action-counter")).to_contain_text("2 of 2 selected")
+
+        page.select_option("select[name=action]", "delete_selected")
+        page.click("button[name=index]")
+        page.click("input[type=submit]")  # "Yes, I'm sure"
+        expect(page.locator(".messagelist")).to_contain_text("Successfully deleted 2")
+        assert list(Image.objects.values_list("title", flat=True)) == ["Cover"]

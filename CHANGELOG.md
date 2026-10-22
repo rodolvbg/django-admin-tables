@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `SelectableRowsMixin` (also in `AdminTablesMixin`): which rows of the
+  changelist can be selected for an action, with `is_row_selectable()`,
+  `get_row_unselectable_reason()` and `filter_selectable_rows()`. Their
+  checkboxes are disabled, "select all" and the counter leave them out,
+  and actions never get them, "Select all" across pages included.
+
 ## [0.1.0] - 2026-10-17
 
 First release.

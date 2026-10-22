@@ -5,6 +5,7 @@ from .fk_links import ForeignKeyLinkMixin
 from .footer import FooterRowsMixin
 from .radio_select import ExclusiveRadioFieldsMixin
 from .row_actions import RowActionsMixin
+from .selection import SelectableRowsMixin
 from .unsaved import UnsavedChangesMixin
 
 
@@ -13,6 +14,7 @@ class AdminTablesMixin(
     HideableColumnsMixin,
     FooterRowsMixin,
     RowActionsMixin,
+    SelectableRowsMixin,
     UnsavedChangesMixin,
     ExclusiveRadioFieldsMixin,
 ):
@@ -32,7 +34,9 @@ class AdminTablesMixin(
     ``responsive_columns``, ``footer_rows``, ``row_actions``,
     ``radio_select_exclusive_fields``), and works as the mixin of its own
     (``ForeignKeyLinkMixin``, ``HideableColumnsMixin``, ``FooterRowsMixin``,
-    ``RowActionsMixin``, ``ExclusiveRadioFieldsMixin``) does. Foreign key
+    ``RowActionsMixin``, ``ExclusiveRadioFieldsMixin``) does. Every row can
+    be selected for an action unless ``is_row_selectable()`` says otherwise
+    (``SelectableRowsMixin``). Foreign key
     links and hideable columns only apply to a ``ModelAdmin``'s changelist:
     an inline has no ``list_display``.
     """

@@ -122,3 +122,14 @@ class TestSpanishTranslations(TestCase):
             )
 
         assert response.json() == {"status": "done", "message": "Se eliminó «Peak»."}
+
+    def test_rows_left_out_in_spanish(self):
+        peak = self.album.images.get()
+        with translation.override("es"):
+            response = self.client.post(
+                reverse("admin:gallery_image_changelist"),
+                {"action": "delete_selected", "_selected_action": [str(peak.pk)]},
+                follow=True,
+            )
+        html = response.content.decode()
+        assert "Se dejó fuera 1 image: no se puede seleccionar." in html
