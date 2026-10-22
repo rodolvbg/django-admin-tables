@@ -1,0 +1,6 @@
+/* SelectableRowsMixin: a row's checkbox that can't be checked, seen as such
+   (Unfold draws a disabled checkbox as an empty one). */
+input.django-admin-tables-unselectable {
+    cursor: not-allowed;
+    opacity: 0.35;
+}

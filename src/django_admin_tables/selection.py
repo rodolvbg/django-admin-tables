@@ -89,7 +89,10 @@ class SelectableRowsMixin(TableTemplatesMixin):
     def media(self) -> Media:
         media = super().media
         if isinstance(self, ModelAdmin):  # The changelist's, not an inline's.
-            media += Media(js=["django_admin_tables/selectable-rows.js"])
+            media += Media(
+                css={"all": ["django_admin_tables/selectable-rows.css"]},
+                js=["django_admin_tables/selectable-rows.js"],
+            )
         return media
 
     def changelist_view(

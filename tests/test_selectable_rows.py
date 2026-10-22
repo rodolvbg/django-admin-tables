@@ -142,6 +142,15 @@ class TestSelectableRows(TestCase):
         assert "left out" not in html
         assert "Successfully deleted 1 image." in html
 
+    def test_its_script_and_style_on_the_changelist_only(self):
+        media = str(admin.site._registry[Image].media)
+        assert "django_admin_tables/selectable-rows.js" in media
+        assert "django_admin_tables/selectable-rows.css" in media
+        from gallery.admin import ImageTabularInline
+
+        inline = ImageTabularInline(Album, admin.site)
+        assert "selectable-rows" not in str(inline.media)
+
     def test_actions_without_a_location(self):
         """Django < 6.1 asks for them without one."""
         model_admin = admin.site._registry[Image]
