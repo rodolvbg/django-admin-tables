@@ -1,6 +1,8 @@
 """SelectableRowsMixin: rows that can't be selected for an action."""
 
 import re
+import warnings
+from unittest import mock
 
 from django.contrib import admin
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
@@ -239,4 +241,101 @@ class TestUnfold(TestCase):
         own = re.search(r'class="([^"]*)"', parent(model_admin, image)).group(1).split()
         assert set(own) - {"action-select"} <= set(
             re.search(r'class="([^"]*)"', html).group(1).split()
+        )
+
+
+class RowByRowAdmin(SelectableRowsMixin, admin.ModelAdmin):
+    """A rule reading a relation, without a filter of the database."""
+
+    list_select_related = ("album",)
+
+    def is_row_selectable(self, request, obj):
+        return obj.album.title != "Locked"
+
+
+class EveryRelationAdmin(RowByRowAdmin):
+    """``list_select_related = True`` (deprecated in Django 6.1, valid
+    before): every relation."""
+
+    def get_list_select_related(self, request):
+        return True
+
+
+class TestQueries(TestCase):
+    """What deciding the selectable rows costs, in queries."""
+
+    @classmethod
+    def setUpTestData(cls):
+        open_album = Album.objects.create(title="Open")
+        locked = Album.objects.create(title="Locked")
+        cls.images = [
+            Image.objects.create(album=album, title=f"{album.title} {n}")
+            for album in (open_album, locked)
+            for n in range(3)
+        ]
+
+    def run_action(self, model_admin, queryset):
+        """The wrapped action, as response_action() runs it: what it got."""
+        got = []
+
+        def action(modeladmin, request, queryset):
+            got.append(queryset)
+
+        request = RequestFactory().post("/")
+        with mock.patch.object(model_admin, "message_user") as message_user:
+            model_admin.only_selectable(action)(model_admin, request, queryset)
+        return got, message_user
+
+    def test_nothing_when_unused(self):
+        model_admin = PlainAdmin(Image, admin.site)
+        request = RequestFactory().get("/")
+        request.user = User(is_superuser=True, is_active=True, is_staff=True)
+        assert model_admin.uses_selectable_rows is False
+        [delete] = model_admin.get_actions(request).values()
+        func = getattr(delete, "func", None) or delete[0]
+        # The action as the admin has it: no wrapper, no query of its own.
+        assert not hasattr(func, "__wrapped__")
+
+    def test_row_by_row_is_one_query(self):
+        for admin_class in (RowByRowAdmin, EveryRelationAdmin):
+            model_admin = admin_class(Image, admin.site)
+            assert model_admin.uses_selectable_rows is True
+            # Every image and its album at once: no query per row.
+            with self.assertNumQueries(1), warnings.catch_warnings():
+                # select_related() without fields: deprecated in Django 6.1.
+                warnings.simplefilter("ignore", PendingDeprecationWarning)
+                warnings.simplefilter("ignore", DeprecationWarning)
+                got, message_user = self.run_action(model_admin, Image.objects.all())
+            [queryset] = got
+            assert sorted(queryset.values_list("title", flat=True)) == [
+                "Open 0",
+                "Open 1",
+                "Open 2",
+            ]
+            message_user.assert_called_once()
+
+    def test_a_filter_is_one_query(self):
+        model_admin = admin.site._registry[Image]  # The example's: a filter.
+        Image.objects.filter(title="Open 0").update(is_primary=True)
+        with self.assertNumQueries(1):
+            got, message_user = self.run_action(model_admin, Image.objects.all())
+        assert "Open 0" not in got[0].values_list("title", flat=True)
+        assert "1 image was left out" in str(message_user.call_args)
+
+    def test_nothing_left_out_the_queryset_as_it_came(self):
+        model_admin = admin.site._registry[Image]
+        queryset = Image.objects.all()
+        with self.assertNumQueries(1):
+            got, message_user = self.run_action(model_admin, queryset)
+        assert got == [queryset]
+        message_user.assert_not_called()
+
+    def test_unused_rows_render_as_always(self):
+        model_admin = PlainAdmin(Image, admin.site)
+        request = RequestFactory().get("/")
+        images = list(Image.objects.all())
+        cl = mock.Mock(result_list=images)
+        model_admin.get_changelist_extras(request, cl)
+        assert not any(
+            hasattr(image, "_django_admin_tables_unselectable") for image in images
         )

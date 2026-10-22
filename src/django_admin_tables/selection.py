@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.db.models import Count, Q
 from django.forms import Media
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
@@ -77,11 +78,38 @@ class SelectableRowsMixin(TableTemplatesMixin):
     ) -> QuerySet[Any]:
         """The objects of ``queryset`` that can be selected. Override it with
         a filter (``queryset.exclude(status="archived")``): this one loads
-        them to ask ``is_row_selectable()`` of each."""
-        selectable = [
-            obj.pk for obj in queryset if self.is_row_selectable(request, obj)
-        ]
+        them (in one query, with the admin's ``list_select_related``) to ask
+        ``is_row_selectable()`` of each."""
+        selectable, _total = self.select_row_by_row(request, queryset)
         return queryset.filter(pk__in=selectable)
+
+    def select_row_by_row(
+        self, request: HttpRequest, queryset: QuerySet[Any]
+    ) -> tuple[list[Any], int]:
+        """The primary keys of the objects of ``queryset`` that
+        ``is_row_selectable()`` lets through, and how many there were: one
+        query, with the relations of ``list_select_related`` (a rule reading
+        ``obj.album`` costs no query per object)."""
+        related = self.get_list_select_related(request)  # type: ignore[attr-defined]
+        if related is True:
+            queryset = queryset.select_related()
+        elif related:
+            queryset = queryset.select_related(*related)
+        objects = list(queryset)
+        selectable = [obj.pk for obj in objects if self.is_row_selectable(request, obj)]
+        return selectable, len(objects)
+
+    @property
+    def uses_selectable_rows(self) -> bool:
+        """Whether this admin decides which rows can be selected: it
+        overrides ``is_row_selectable()`` or ``filter_selectable_rows()``.
+        Otherwise every row can, and nothing costs a query."""
+        cls = type(self)
+        return (
+            cls.is_row_selectable is not SelectableRowsMixin.is_row_selectable
+            or cls.filter_selectable_rows
+            is not SelectableRowsMixin.filter_selectable_rows
+        )
 
     # The changelist ----------------------------------------------------------
 
@@ -115,7 +143,7 @@ class SelectableRowsMixin(TableTemplatesMixin):
         self, request: HttpRequest, cl: ChangeList
     ) -> dict[str, Any]:
         # Before the rows are rendered: what each one's checkbox will be.
-        for obj in cl.result_list:
+        for obj in cl.result_list if self.uses_selectable_rows else ():
             if self.is_row_selectable(request, obj):
                 setattr(obj, UNSELECTABLE, None)
             else:
@@ -150,6 +178,8 @@ class SelectableRowsMixin(TableTemplatesMixin):
             actions = super().get_actions(  # type: ignore[misc]
                 request, action_location=action_location
             )
+        if not self.uses_selectable_rows:
+            return actions
         return {name: self.wrap_action(action) for name, action in actions.items()}
 
     def wrap_action(self, action: Any) -> Any:
@@ -165,8 +195,8 @@ class SelectableRowsMixin(TableTemplatesMixin):
 
         @functools.wraps(func)
         def action(modeladmin: Any, request: HttpRequest, queryset: QuerySet[Any]):
-            selectable = self.filter_selectable_rows(request, queryset)
-            skipped = queryset.count() - selectable.count()
+            selectable, total, kept = self.count_selectable(request, queryset)
+            skipped = total - kept
             if skipped:
                 opts = queryset.model._meta
                 self.message_user(  # type: ignore[attr-defined]
@@ -186,11 +216,34 @@ class SelectableRowsMixin(TableTemplatesMixin):
                     },
                     messages.WARNING,
                 )
-                if not selectable.exists():
+                if not kept:
                     return None  # Nothing left to act on: back to the list.
-            return func(modeladmin, request, selectable)
+                queryset = selectable
+            return func(modeladmin, request, queryset)
 
         return action
+
+    def count_selectable(
+        self, request: HttpRequest, queryset: QuerySet[Any]
+    ) -> tuple[QuerySet[Any], int, int]:
+        """The objects of ``queryset`` an action may get, how many there
+        were and how many of them it may: one query. With
+        ``filter_selectable_rows()``, a count by the database; else the
+        objects themselves, asked row by row."""
+        if (
+            type(self).filter_selectable_rows
+            is SelectableRowsMixin.filter_selectable_rows
+        ):
+            pks, total = self.select_row_by_row(request, queryset)
+            return queryset.filter(pk__in=pks), total, len(pks)
+        selectable = self.filter_selectable_rows(request, queryset)
+        counts = queryset.aggregate(
+            total=Count("pk", distinct=True),
+            selectable=Count(
+                "pk", distinct=True, filter=Q(pk__in=selectable.values("pk"))
+            ),
+        )
+        return selectable, counts["total"], counts["selectable"]
 
 
 CLASS = re.compile(r'\bclass="([^"]*)"')

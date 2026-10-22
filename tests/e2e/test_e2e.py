@@ -34,6 +34,18 @@ class _AdminE2ETestCase(StaticLiveServerTestCase):
     def _inject_page(self, page: Page) -> None:
         self.page = page
 
+    def tearDown(self) -> None:
+        # Close the page before the test database is flushed (after
+        # tearDown): a request still in flight, or one the page makes later,
+        # would otherwise reach the server once its data, or its database
+        # connection, is gone, breaking this test or the next one.
+        page = getattr(self, "page", None)
+        if page is not None and not page.is_closed():
+            # Its routes first (a CSP test adds some): none left mid-request.
+            page.unroute_all(behavior="ignoreErrors")
+            page.close()
+        super().tearDown()
+
     def login(self) -> None:
         get_user_model().objects.create_superuser(
             "admin", "admin@example.com", "password"
@@ -264,7 +276,6 @@ class TestStrictContentSecurityPolicy(_AdminE2ETestCase):
                 pass
 
         self.page.route(f"{self.live_server_url}/**", add_policy)
-        self.addCleanup(self.page.unroute_all, behavior="ignoreErrors")
 
     def test_menu_and_responsive_columns_still_hide(self):
         album = self.create_album(images=(("Beach", True),))

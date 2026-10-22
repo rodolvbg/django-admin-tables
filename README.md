@@ -479,9 +479,15 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
   nor through a request made by hand. They're left out, with a warning
   ("1 image was left out: it can't be selected."); if nothing is left,
   the action doesn't run.
-- `filter_selectable_rows()` is what actions go through. By default it
-  asks `is_row_selectable()` object by object, loading them: on a large
-  changelist, override it with the same rule as a filter of the database.
+- What it costs: nothing, unless the admin overrides
+  `is_row_selectable()` or `filter_selectable_rows()`. Then, on the
+  changelist, nothing either (the rule runs on the objects the page
+  loaded); and running an action, one query. With
+  `filter_selectable_rows()`, a count by the database; without, the
+  selected objects, loaded at once with the admin's `list_select_related`
+  (a rule reading `obj.album` costs no query per object) and asked one by
+  one. For "Select all 250" on a large changelist, override
+  `filter_selectable_rows()` with the same rule as a filter.
 - It applies to every action, the site's ("Delete selected") included, and
   on Django 6.1+ to the actions of an object's page too.
 

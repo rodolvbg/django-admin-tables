@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changelist can be selected for an action, with `is_row_selectable()`,
   `get_row_unselectable_reason()` and `filter_selectable_rows()`. Their
   checkboxes are disabled, "select all" and the counter leave them out,
-  and actions never get them, "Select all" across pages included.
+  and actions never get them, "Select all" across pages included. It costs
+  nothing unless used, and then one query per action.
 
 ## [0.1.0] - 2026-10-17
 
