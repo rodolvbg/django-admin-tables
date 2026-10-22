@@ -1,5 +1,5 @@
 """Real-browser end-to-end tests: the JS module and the server-side
-validation are unit-tested elsewhere (tests/js/, test_formsets.py); this
+validation are unit-tested elsewhere (tests/js/, radio_select/test_formsets.py); this
 file is about the two only working together, through an actual browser,
 against a real running Django server.
 """

@@ -2,7 +2,7 @@
 GET/POST requests through a logged-in admin client, hitting the actual
 URLs. Direct, method-level tests for ExclusiveRadioFieldsMixin's own
 methods (including get_changelist_formset) live in
-test_exclusive_radio_fields_mixin.py instead.
+test_mixin.py instead.
 """
 
 from django.contrib.auth.models import User

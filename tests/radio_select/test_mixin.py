@@ -1,7 +1,7 @@
 """Method-by-method tests for ExclusiveRadioFieldsMixin: one test class
 per area, one test per scenario. Full HTTP-level integration (real
-GET/POST through the admin views) lives in test_admin_integration.py and
-test_changelist.py instead — this file only calls the mixin's own methods
+GET/POST through the admin views) lives in test_inline_integration.py and
+test_changelist_integration.py instead — this file only calls the mixin's own methods
 directly.
 """
 
