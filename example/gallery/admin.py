@@ -63,6 +63,9 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     """Each image's album, as a link to the album's change view."""
 
     list_display = ("title", "album", "is_primary", "is_featured")
+    # The search box suggests images as one types; choosing one opens it.
+    search_fields = ("title", "album__title")
+    search_suggestions = True
     list_display_foreign_key_links = ("album",)
     list_display_hideable = ("album", "is_primary", "is_featured")
     list_display_hidden = ("is_featured",)

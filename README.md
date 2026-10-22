@@ -24,6 +24,8 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
   "Delete"…), on the changelist and in inlines.
 - **[Selectable rows](#selectable-rows)** — which rows of the changelist
   can be selected for an action, object by object.
+- **[Search suggestions](#search-suggestions)** — the changelist's search
+  box suggests objects as one types; choosing one opens it.
 - **[Unsaved changes](#unsaved-changes)** — the changelist asks before
   losing `list_editable` edits.
 
@@ -78,8 +80,8 @@ Foreign key links and hideable columns only apply to a `ModelAdmin`'s
 changelist (an inline has no `list_display`). Each extra's mixin is
 available on its own too: `ExclusiveRadioFieldsMixin`,
 `ForeignKeyLinkMixin`, `HideableColumnsMixin` (hideable and responsive
-columns), `FooterRowsMixin`, `RowActionsMixin`, `SelectableRowsMixin` and
-`UnsavedChangesMixin`.
+columns), `FooterRowsMixin`, `RowActionsMixin`, `SelectableRowsMixin`,
+`SearchSuggestionsMixin` and `UnsavedChangesMixin`.
 
 ## Exclusive radio fields
 
@@ -492,6 +494,43 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
   on Django 6.1+ to the actions of an object's page too.
 
 ![A changelist where the primary image's checkbox is disabled, with its reason, and the other two selected](docs/screenshots/selectable-rows.png)
+
+## Search suggestions
+
+The changelist's search box suggests the objects it finds as one types;
+choosing one, with the mouse or the keyboard (↑ ↓ Enter, Esc closes), opens
+its change page. Enter without choosing one searches as always.
+
+```python
+class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
+    search_fields = ("title", "album__title")
+    search_suggestions = True
+    search_suggestions_limit = 8  # optional (8)
+    search_suggestions_min_length = 2  # optional (2)
+
+    def get_search_suggestion_label(self, request, obj):  # optional
+        return f"{obj.title} · {obj.album}"
+```
+
+- The suggestions are what the changelist's search finds: its
+  `get_search_results()` (`search_fields`, their `^`, `=` and `@`
+  prefixes, and whatever overrides it), on `get_queryset(request)`, in the
+  changelist's order, each object once.
+- What it costs: one query, of `search_suggestions_limit` objects at most,
+  a fraction of a second after the typing stops (an older request is
+  cancelled). Use `list_select_related` or `get_queryset()` if the label
+  reads a relation.
+- Only for those who may view or change the objects; each suggestion leads
+  to its change page (read-only, for those who may only view it).
+  `get_search_suggestion_url()` changes where (None: not suggested), and
+  `get_search_suggestions(request, term)` which objects.
+- An accessible combobox (ARIA), without inline scripts (it works under a
+  strict Content Security Policy), in Django's admin and in Unfold, light
+  and dark. Not in a popup (where choosing an object picks it for a field).
+
+![The search box of the images, with "snow" typed and three images suggested](docs/screenshots/search-suggestions.png)
+
+![The same, in Unfold](docs/screenshots/search-suggestions-unfold.png)
 
 ## Unsaved changes
 

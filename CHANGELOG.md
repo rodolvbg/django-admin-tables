@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checkboxes are disabled, "select all" and the counter leave them out,
   and actions never get them, "Select all" across pages included. It costs
   nothing unless used, and then one query per action.
+- `SearchSuggestionsMixin` (also in `AdminTablesMixin`, with
+  `search_suggestions = True`): the changelist's search box suggests the
+  objects its search finds as one types, and choosing one opens its change
+  page. One query per suggestion request; `get_search_suggestions()`,
+  `get_search_suggestion_label()` and `get_search_suggestion_url()` to
+  customize it. Spanish translation of its texts.
 
 ## [0.1.0] - 2026-10-17
 

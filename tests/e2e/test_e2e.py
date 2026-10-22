@@ -450,3 +450,56 @@ class TestSelectableRows(_AdminE2ETestCase):
         page.click("input[type=submit]")  # "Yes, I'm sure"
         expect(page.locator(".messagelist")).to_contain_text("Successfully deleted 2")
         assert list(Image.objects.values_list("title", flat=True)) == ["Cover"]
+
+
+class TestSearchSuggestions(_AdminE2ETestCase):
+    """The example's ImageAdmin: its search box suggests images."""
+
+    def test_choosing_a_suggestion_opens_it(self):
+        self.create_album(
+            images=(("Beach", True), ("Beach bar", False), ("City", False))
+        )
+        self.login()
+        page = self.page
+        page.goto(f"{self.live_server_url}/admin/gallery/image/")
+
+        search = page.locator("#searchbar")
+        search.press_sequentially("bea")
+        options = page.locator("#django-admin-tables-search-suggestions [role=option]")
+        expect(options).to_have_text(["Beach", "Beach bar"])
+        expect(search).to_have_attribute("aria-expanded", "true")
+
+        # The keyboard: the second one.
+        search.press("ArrowDown")
+        search.press("ArrowDown")
+        search.press("Enter")
+        bar = Image.objects.get(title="Beach bar")
+        expect(page).to_have_url(
+            f"{self.live_server_url}/admin/gallery/image/{bar.pk}/change/"
+        )
+
+        # The mouse.
+        page.go_back()
+        page.locator("#searchbar").fill("")
+        page.locator("#searchbar").press_sequentially("city")
+        page.locator(
+            "#django-admin-tables-search-suggestions a", has_text="City"
+        ).click()
+        city = Image.objects.get(title="City")
+        expect(page).to_have_url(
+            f"{self.live_server_url}/admin/gallery/image/{city.pk}/change/"
+        )
+
+    def test_enter_without_choosing_searches_as_always(self):
+        self.create_album(images=(("Beach", True), ("City", False)))
+        self.login()
+        page = self.page
+        page.goto(f"{self.live_server_url}/admin/gallery/image/")
+        search = page.locator("#searchbar")
+        search.press_sequentially("city")
+        expect(page.locator("#django-admin-tables-search-suggestions")).to_be_visible()
+        search.press("Escape")
+        expect(page.locator("#django-admin-tables-search-suggestions")).to_be_hidden()
+        search.press("Enter")
+        expect(page).to_have_url(re.compile(r"\?q=city$"))
+        expect(page.locator("#result_list tbody tr")).to_have_count(1)

@@ -14,6 +14,7 @@
     {# Not deferred: it hides the columns before the table is painted. #}
     <script src="{% static 'django_admin_tables/columns.js' %}"></script>
   {% endif %}
+  {% if django_admin_tables_search %}{{ django_admin_tables_search|json_script:"django-admin-tables-search" }}{% endif %}
 {% endblock %}
 
 {% block search %}
