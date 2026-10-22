@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from django.conf import settings
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.admin.utils import quote
@@ -126,8 +127,17 @@ class SearchSuggestionsMixin(TableTemplatesMixin):
     def media(self) -> Media:
         media = super().media
         if self.uses_search_suggestions:
+            # The look of the admin's autocomplete fields: Select2's (minified
+            # unless DEBUG, as the admin's own widgets load it).
+            extra = "" if settings.DEBUG else ".min"
             media += Media(
-                css={"all": ["django_admin_tables/search-suggestions.css"]},
+                css={
+                    "all": [
+                        f"admin/css/vendor/select2/select2{extra}.css",
+                        "admin/css/autocomplete.css",
+                        "django_admin_tables/search-suggestions.css",
+                    ]
+                },
                 js=["django_admin_tables/search-suggestions.js"],
             )
         return media

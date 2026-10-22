@@ -3,6 +3,10 @@
  * it finds as one types (an ARIA combobox); choosing one, with the mouse or
  * the keyboard, opens its change page. Enter without choosing one searches
  * as always. Its configuration: the JSON of #django-admin-tables-search.
+ *
+ * The suggestions look like the admin's autocomplete fields: Select2's
+ * dropdown (its markup and classes, on the admin's stylesheets, and
+ * Unfold's), without Select2 itself: the search box stays a text box.
  */
 (() => {
     const DELAY = 200;
@@ -22,15 +26,29 @@
         if (!options || !input || input.dataset.djangoAdminTablesSearch) return;
         input.dataset.djangoAdminTablesSearch = "on";
 
+        const span = (className) => {
+            const node = document.createElement("span");
+            node.className = className;
+            return node;
+        };
+        const container = span(
+            "select2-container select2-container--admin-autocomplete " +
+                "select2-container--open django-admin-tables-search-dropdown",
+        );
+        const dropdown = span("select2-dropdown select2-dropdown--below");
+        const results = span("select2-results");
         const list = document.createElement("ul");
         list.id = "django-admin-tables-search-suggestions";
-        list.className = "django-admin-tables-search-suggestions";
+        list.className = "select2-results__options";
         list.setAttribute("role", "listbox");
         list.setAttribute("aria-label", options.texts.label);
-        list.hidden = true;
+        results.append(list);
+        dropdown.append(results);
+        container.append(dropdown);
+        container.hidden = true;
         const box = input.parentElement;
         box.classList.add("django-admin-tables-search");
-        box.append(list);
+        box.append(container);
 
         input.setAttribute("role", "combobox");
         input.setAttribute("aria-autocomplete", "list");
@@ -44,7 +62,7 @@
         let active = -1;
 
         function close() {
-            list.hidden = true;
+            container.hidden = true;
             input.setAttribute("aria-expanded", "false");
             input.removeAttribute("aria-activedescendant");
             active = -1;
@@ -52,10 +70,13 @@
 
         function highlight(index) {
             active = index;
+            // As Select2: highlighted by its class; aria-selected stays for
+            // a chosen value (Unfold draws a check on it). The active one is
+            // aria-activedescendant's.
             links.forEach((link, i) => {
-                link.parentElement.setAttribute(
-                    "aria-selected",
-                    String(i === index),
+                link.parentElement.classList.toggle(
+                    "select2-results__option--highlighted",
+                    i === index,
                 );
             });
             input.setAttribute(
@@ -65,19 +86,21 @@
             links[index].parentElement.scrollIntoView?.({ block: "nearest" });
         }
 
-        function show(results) {
+        function show(found) {
             links = [];
             active = -1;
             list.replaceChildren();
-            if (!results.length) {
+            if (!found.length) {
                 const empty = document.createElement("li");
-                empty.className = "django-admin-tables-search-empty";
+                empty.className =
+                    "select2-results__option select2-results__message";
                 empty.textContent = options.texts.empty;
                 list.append(empty);
             }
-            results.forEach((result, index) => {
+            found.forEach((result, index) => {
                 const item = document.createElement("li");
                 item.id = `${list.id}-${index}`;
+                item.className = "select2-results__option";
                 item.setAttribute("role", "option");
                 item.setAttribute("aria-selected", "false");
                 const link = document.createElement("a");
@@ -93,7 +116,21 @@
                 list.append(item);
                 links.push(link);
             });
-            list.hidden = false;
+            // Under the search field, as wide as it (as Select2 places it):
+            // the input, or the box around it when that draws the field
+            // (Unfold's input has no border of its own).
+            const border = getComputedStyle(input);
+            const field =
+                border.borderTopStyle === "none" ||
+                Number.parseFloat(border.borderTopWidth) === 0
+                    ? box
+                    : input;
+            const top = field === box ? 0 : input.offsetTop;
+            const left = field === box ? 0 : input.offsetLeft;
+            container.style.left = `${left}px`;
+            container.style.top = `${top + field.offsetHeight}px`;
+            container.style.width = `${field.offsetWidth}px`;
+            container.hidden = false;
             input.setAttribute("aria-expanded", "true");
         }
 
@@ -130,7 +167,7 @@
         });
 
         input.addEventListener("keydown", (event) => {
-            const open = !list.hidden;
+            const open = !container.hidden;
             if (event.key === "ArrowDown" && open && links.length) {
                 event.preventDefault();
                 highlight((active + 1) % links.length);

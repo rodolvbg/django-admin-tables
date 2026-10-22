@@ -1,89 +1,42 @@
 /* SearchSuggestionsMixin: the suggestions under the changelist's search
-   box. Unfold's colours where they're defined (--color-*), else Django's
-   admin's (light and dark). The links' selectors outweigh the admin's
-   underlined links (a:not(…, #content-main.app-list a)). */
+   box look like the admin's autocomplete fields — Select2's dropdown, on the
+   admin's stylesheets (admin/css/vendor/select2, admin/css/autocomplete.css)
+   and Unfold's. Here, only where it goes (search-suggestions.js places it
+   under the box) and its links, which look like Select2's options. */
 
 .django-admin-tables-search {
     position: relative;
 }
 
-.django-admin-tables-search ul.django-admin-tables-search-suggestions {
+.django-admin-tables-search .django-admin-tables-search-dropdown {
     position: absolute;
-    z-index: 1000;
-    top: 100%;
-    left: 0;
-    min-width: min(24rem, 100%);
-    max-width: min(32rem, calc(100vw - 32px));
-    max-height: 20rem;
-    margin: 4px 0 0;
-    padding: 4px 0;
-    overflow-y: auto;
-    list-style: none;
-    border: 1px solid var(--color-base-200, var(--border-color, #ccc));
-    border-radius: 4px;
-    background: var(--body-bg, #fff);
-    box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
-    text-align: left;
+    z-index: 1051;
+    min-width: min(20rem, calc(100vw - 32px));
 }
 
-.django-admin-tables-search ul.django-admin-tables-search-suggestions[hidden] {
+.django-admin-tables-search .django-admin-tables-search-dropdown[hidden] {
     display: none;
 }
 
-.django-admin-tables-search ul.django-admin-tables-search-suggestions li {
+.django-admin-tables-search-dropdown .select2-dropdown {
+    position: static;
+}
+
+.django-admin-tables-search-dropdown .select2-results__options {
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
-.django-admin-tables-search
-    ul.django-admin-tables-search-suggestions
-    li.django-admin-tables-search-empty {
-    padding: 6px 12px;
-    color: var(--color-base-500, var(--body-quiet-color, #666));
-}
-
-#changelist-search ul.django-admin-tables-search-suggestions li a {
+/* Over the admin's underlined links (a:not(…, #content-main.app-list a)). */
+#changelist-search
+    .django-admin-tables-search-dropdown
+    li.select2-results__option
+    a {
     display: block;
-    padding: 6px 12px;
     overflow: hidden;
-    color: var(--color-base-700, var(--body-fg, #333));
+    color: inherit;
     text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-#changelist-search ul.django-admin-tables-search-suggestions li a:hover,
-#changelist-search
-    ul.django-admin-tables-search-suggestions
-    li[aria-selected="true"]
-    a {
-    background: var(--color-base-100, var(--selected-bg, #e4e4e4));
-    color: var(--color-primary-600, var(--link-fg, #417690));
-}
-
-/* django-unfold, dark */
-
-html.dark .django-admin-tables-search
-    ul.django-admin-tables-search-suggestions {
-    border-color: var(--color-base-700, #404040);
-    background: var(--color-base-900, #171717);
-}
-
-html.dark #changelist-search ul.django-admin-tables-search-suggestions li a {
-    color: var(--color-base-200, #e5e5e5);
-}
-
-html.dark
-    #changelist-search
-    ul.django-admin-tables-search-suggestions
-    li
-    a:hover,
-html.dark
-    #changelist-search
-    ul.django-admin-tables-search-suggestions
-    li[aria-selected="true"]
-    a {
-    background: var(--color-base-800, #262626);
-    color: var(--color-primary-500, #a855f7);
 }

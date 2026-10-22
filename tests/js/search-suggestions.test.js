@@ -41,6 +41,8 @@ function answer(results = RESULTS, ok = true) {
 const input = () => document.getElementById("searchbar");
 const list = () =>
     document.getElementById("django-admin-tables-search-suggestions");
+const dropdown = () =>
+    document.querySelector(".django-admin-tables-search-dropdown");
 const options = () => [...list().querySelectorAll('[role="option"]')];
 
 async function type(value) {
@@ -75,7 +77,14 @@ describe("search-suggestions.js", () => {
         expect(input().getAttribute("autocomplete")).toBe("off");
         expect(list().getAttribute("role")).toBe("listbox");
         expect(list().getAttribute("aria-label")).toBe("Suggestions");
-        expect(list().hidden).toBe(true);
+        expect(dropdown().hidden).toBe(true);
+        // Select2's markup: the admin's autocomplete fields' look.
+        expect(dropdown().className).toBe(
+            "select2-container select2-container--admin-autocomplete " +
+                "select2-container--open django-admin-tables-search-dropdown",
+        );
+        expect(list().className).toBe("select2-results__options");
+        expect(list().parentElement.className).toBe("select2-results");
         expect(
             input().parentElement.classList.contains(
                 "django-admin-tables-search",
@@ -98,19 +107,22 @@ describe("search-suggestions.js", () => {
         const [url, init] = fetch.mock.calls[0];
         expect(url).toBe(`${CONFIG.url}?q=snow`);
         expect(init.credentials).toBe("same-origin");
-        expect(list().hidden).toBe(false);
+        expect(dropdown().hidden).toBe(false);
         expect(input().getAttribute("aria-expanded")).toBe("true");
         expect(options().map((o) => o.textContent)).toEqual([
             "Snowy peak",
             "Cabin",
         ]);
+        expect(options()[0].className).toBe("select2-results__option");
+        expect(dropdown().style.width).toMatch(/px$/);
+        expect(dropdown().style.left).toBe("0px");
         const link = options()[0].querySelector("a");
         expect(link.getAttribute("href")).toBe(RESULTS[0].url);
         expect(link.tabIndex).toBe(-1);
 
         // Shorter again: closed.
         await type("s");
-        expect(list().hidden).toBe(true);
+        expect(dropdown().hidden).toBe(true);
     });
 
     it("says when there's nothing", async () => {
@@ -120,6 +132,9 @@ describe("search-suggestions.js", () => {
         await type("zz");
         expect(options()).toHaveLength(0);
         expect(list().textContent).toBe("Nothing found.");
+        expect(list().firstElementChild.className).toBe(
+            "select2-results__option select2-results__message",
+        );
         expect(key("ArrowDown").defaultPrevented).toBe(false);
         expect(key("Enter").defaultPrevented).toBe(false);
     });
@@ -144,7 +159,7 @@ describe("search-suggestions.js", () => {
         input().value = "snow";
         resolve({ ok: true, json: async () => ({ results: RESULTS }) });
         await vi.advanceTimersByTimeAsync(0);
-        expect(list().hidden).toBe(true);
+        expect(dropdown().hidden).toBe(true);
     });
 
     it("cancels what it asked before, and survives errors", async () => {
@@ -165,7 +180,7 @@ describe("search-suggestions.js", () => {
 
         vi.stubGlobal("fetch", answer(RESULTS, false));
         await type("snow");
-        expect(list().hidden).toBe(true);
+        expect(dropdown().hidden).toBe(true);
     });
 
     it("is chosen with the keyboard", async () => {
@@ -180,14 +195,30 @@ describe("search-suggestions.js", () => {
         expect(input().getAttribute("aria-activedescendant")).toBe(
             options()[0].id,
         );
-        expect(options()[0].getAttribute("aria-selected")).toBe("true");
+        expect(options()[0].getAttribute("aria-selected")).toBe("false");
+        expect(options()[0].className).toBe(
+            "select2-results__option select2-results__option--highlighted",
+        );
         key("ArrowDown");
+        expect(options()[0].className).toBe("select2-results__option");
         key("ArrowDown"); // Round to the first.
-        expect(options()[0].getAttribute("aria-selected")).toBe("true");
+        expect(
+            options()[0].classList.contains(
+                "select2-results__option--highlighted",
+            ),
+        ).toBe(true);
         key("ArrowUp"); // And back to the last.
-        expect(options()[1].getAttribute("aria-selected")).toBe("true");
+        expect(
+            options()[1].classList.contains(
+                "select2-results__option--highlighted",
+            ),
+        ).toBe(true);
         key("ArrowUp");
-        expect(options()[0].getAttribute("aria-selected")).toBe("true");
+        expect(
+            options()[0].classList.contains(
+                "select2-results__option--highlighted",
+            ),
+        ).toBe(true);
         expect(key("a").defaultPrevented).toBe(false);
         expect(key("Enter").defaultPrevented).toBe(true);
         expect(click).toHaveBeenCalledOnce();
@@ -197,7 +228,7 @@ describe("search-suggestions.js", () => {
 
         // Escape closes; then the keys are the input's again.
         expect(key("Escape").defaultPrevented).toBe(true);
-        expect(list().hidden).toBe(true);
+        expect(dropdown().hidden).toBe(true);
         expect(input().hasAttribute("aria-activedescendant")).toBe(false);
         expect(key("Escape").defaultPrevented).toBe(false);
         expect(key("ArrowDown").defaultPrevented).toBe(false);
@@ -219,14 +250,32 @@ describe("search-suggestions.js", () => {
         await type("snow");
         const [first, second] = options();
         second.dispatchEvent(new MouseEvent("mousemove"));
-        expect(second.getAttribute("aria-selected")).toBe("true");
-        expect(first.getAttribute("aria-selected")).toBe("false");
+        expect(second.classList).toContain(
+            "select2-results__option--highlighted",
+        );
+        expect(first.classList).not.toContain(
+            "select2-results__option--highlighted",
+        );
         const down = new MouseEvent("mousedown", { cancelable: true });
         second.dispatchEvent(down);
         expect(down.defaultPrevented).toBe(true);
         // Leaving the box closes it.
         input().dispatchEvent(new Event("blur"));
-        expect(list().hidden).toBe(true);
+        expect(dropdown().hidden).toBe(true);
+    });
+
+    it("goes under the box when the box draws the field (Unfold)", async () => {
+        vi.stubGlobal("fetch", answer());
+        page();
+        await load();
+        input().style.border = "none";
+        await type("snow");
+        expect(dropdown().style.left).toBe("0px");
+        expect(dropdown().style.top).toBe("0px"); // (jsdom has no layout)
+        // Tailwind's reset: a border, 0 wide.
+        input().style.border = "0 solid";
+        await type("snowy");
+        expect(dropdown().style.left).toBe("0px");
     });
 
     it("scrolls the chosen one into view", async () => {
@@ -245,6 +294,7 @@ describe("search-suggestions.js", () => {
         page(null);
         await load();
         expect(list()).toBe(null);
+        expect(dropdown()).toBe(null);
         page("{nope");
         await load();
         expect(list()).toBe(null);

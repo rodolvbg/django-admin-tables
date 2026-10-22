@@ -524,9 +524,12 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
   to its change page (read-only, for those who may only view it).
   `get_search_suggestion_url()` changes where (None: not suggested), and
   `get_search_suggestions(request, term)` which objects.
+- It looks like the admin's autocomplete fields: Select2's dropdown, on the
+  admin's own stylesheets (and Unfold's), light and dark. The search box
+  stays a text box: no jQuery, nor Select2's script.
 - An accessible combobox (ARIA), without inline scripts (it works under a
-  strict Content Security Policy), in Django's admin and in Unfold, light
-  and dark. Not in a popup (where choosing an object picks it for a field).
+  strict Content Security Policy). Not in a popup (where choosing an object
+  picks it for a field).
 
 ![The search box of the images, with "snow" typed and three images suggested](docs/screenshots/search-suggestions.png)
 

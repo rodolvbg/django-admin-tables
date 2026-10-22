@@ -20,7 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   objects its search finds as one types, and choosing one opens its change
   page. One query per suggestion request; `get_search_suggestions()`,
   `get_search_suggestion_label()` and `get_search_suggestion_url()` to
-  customize it. Spanish translation of its texts.
+  customize it. Its suggestions look like the admin's autocomplete fields
+  (Select2's dropdown, in Django's admin and in Unfold). Spanish translation
+  of its texts.
 
 ## [0.1.0] - 2026-10-17
 

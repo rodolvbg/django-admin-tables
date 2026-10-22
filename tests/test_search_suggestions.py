@@ -82,6 +82,9 @@ class TestSearchSuggestions(TestCase):
         }
         assert "django_admin_tables/search-suggestions.js" in html
         assert "django_admin_tables/search-suggestions.css" in html
+        # The look of the admin's autocomplete fields.
+        assert "admin/css/vendor/select2/select2.min.css" in html
+        assert "admin/css/autocomplete.css" in html
         # Not in a popup: there, choosing an object picks it.
         popup = self.client.get("/admin/gallery/image/", {"_popup": "1"})
         assert config(popup.content.decode()) is None
@@ -144,6 +147,11 @@ class TestOptions(TestCase):
         request = RequestFactory().get("/", {"q": term})
         request.user = self.user
         return request
+
+    def test_select2_unminified_in_debug(self):
+        with self.settings(DEBUG=True):
+            media = str(Labelled(Image, admin.site).media)
+        assert "admin/css/vendor/select2/select2.css" in media
 
     def test_off_by_default(self):
         model_admin = Plain(Image, admin.site)
