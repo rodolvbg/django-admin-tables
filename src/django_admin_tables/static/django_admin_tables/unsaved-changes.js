@@ -6,9 +6,27 @@
     // row actions).
     var LEAVING = "djangoAdminTablesLeaving";
 
+    // The fields that save themselves (ListEditableAutosaveMixin) are never
+    // unsaved: left out.
+    function autosaved() {
+        var node = document.getElementById("django-admin-tables-autosave");
+        try {
+            return node ? JSON.parse(node.textContent).fields : [];
+        } catch {
+            return [];
+        }
+    }
+
     function edits(form) {
+        var fields = autosaved();
+        var own = (name) =>
+            fields.some((field) =>
+                new RegExp(`^form-\\d+-${field}(_\\d+)?$`).test(name),
+            );
         return new URLSearchParams(
-            [...new FormData(form)].filter(([name]) => name.startsWith(PREFIX)),
+            [...new FormData(form)].filter(
+                ([name]) => name.startsWith(PREFIX) && !own(name),
+            ),
         ).toString();
     }
 

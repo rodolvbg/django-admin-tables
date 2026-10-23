@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: django-admin-tables 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 15:31+0000\n"
+"POT-Creation-Date: 2026-10-23 08:53+0000\n"
 "PO-Revision-Date: 2026-10-17 01:00+0200\n"
 "Last-Translator: Rodolfo Becerra\n"
 "Language-Team: Spanish\n"
@@ -13,6 +13,34 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+
+#: autosave.py
+msgid "Unknown field."
+msgstr "Campo desconocido."
+
+#: autosave.py
+msgid "It doesn't exist any more."
+msgstr "Ya no existe."
+
+#: autosave.py
+msgid "Someone else changed it meanwhile: reload the page."
+msgstr "Alguien lo cambió mientras tanto: recarga la página."
+
+#: autosave.py
+msgid "It can't be saved."
+msgstr "No se puede guardar."
+
+#: autosave.py
+msgid "Saving…"
+msgstr "Guardando…"
+
+#: autosave.py
+msgid "Saved"
+msgstr "Guardado"
+
+#: autosave.py
+msgid "Not saved"
+msgstr "No guardado"
 
 #: row_actions/actions.py
 msgctxt "row action"

@@ -50,6 +50,29 @@ describe("unsaved-changes.js", () => {
         expect(leave()).toBe(true);
     });
 
+    it("ignores the fields that save themselves", async () => {
+        const config = (text) =>
+            `<script id="django-admin-tables-autosave" type="application/json">${text}</script>`;
+        await load(
+            config('{"fields": ["title"]}') +
+                CHANGELIST.replace(
+                    "</form>",
+                    '<input name="form-0-price" value="1"></form>',
+                ),
+        );
+        document.querySelector("[name=form-0-title]").value = "Coast";
+        expect(leave()).toBe(false);
+        document.querySelector("[name=form-0-price]").value = "2";
+        expect(leave()).toBe(true);
+        document
+            .getElementById("changelist-form")
+            .dispatchEvent(new Event("submit"));
+
+        await load(config("{nope") + CHANGELIST);
+        document.querySelector("[name=form-0-title]").value = "Coast";
+        expect(leave()).toBe(true);
+    });
+
     it("lets the changelist be saved", async () => {
         await load(CHANGELIST);
         const form = document.getElementById("changelist-form");

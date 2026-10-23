@@ -1,0 +1,7 @@
+/* ListEditableAutosaveMixin, every list_editable field saving itself: the
+   changelist's "Save" button has nothing to save (Django's, in the form;
+   Unfold's, by the pagination). */
+#changelist-form input[type="submit"][name="_save"],
+button[name="_save"][form="changelist-form"] {
+    display: none;
+}

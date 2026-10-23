@@ -503,3 +503,57 @@ class TestSearchSuggestions(_AdminE2ETestCase):
         search.press("Enter")
         expect(page).to_have_url(re.compile(r"\?q=city$"))
         expect(page.locator("#result_list tbody tr")).to_have_count(1)
+
+
+class TestListEditableAutosave(_AdminE2ETestCase):
+    """The example's AlbumStackedAdmin: its title and is_featured save
+    themselves, without a "Save" button."""
+
+    def test_fields_save_themselves(self):
+        from gallery.models import Album
+
+        album = Album.objects.create(title="Winter")
+        self.login()
+        page = self.page
+        page.goto(f"{self.live_server_url}/admin/gallery/albumstacked/")
+        expect(page.locator("input[name=_save]")).to_be_hidden()
+
+        # A switch: at once.
+        page.check("input[name=form-0-is_featured]")
+        status = page.locator(".django-admin-tables-autosave-status").first
+        expect(status).to_have_text("Saved")
+        album.refresh_from_db()
+        assert album.is_featured is True
+
+        # A text: on Enter (not the changelist's submit).
+        title = page.locator("input[name=form-0-title]")
+        title.fill("Summer")
+        title.press("Enter")
+        expect(page).to_have_url(f"{self.live_server_url}/admin/gallery/albumstacked/")
+        expect(
+            page.locator("td", has=title).locator(
+                ".django-admin-tables-autosave-status"
+            )
+        ).to_have_text("Saved")
+        album.refresh_from_db()
+        assert album.title == "Summer"
+
+        # Not valid: put back, saying why.
+        title.fill("")
+        title.press("Tab")
+        expect(
+            page.locator("td", has=title).locator(
+                ".django-admin-tables-autosave-status"
+            )
+        ).to_have_text("This field is required.")
+        expect(title).to_have_value("Summer")
+
+        # Nothing unsaved: leaving asks nothing.
+        dialogs = []
+        page.on(
+            "dialog", lambda dialog: (dialogs.append(dialog.type), dialog.dismiss())
+        )
+        page.goto(f"{self.live_server_url}/admin/")
+        assert dialogs == []
+        album.refresh_from_db()
+        assert album.title == "Summer"

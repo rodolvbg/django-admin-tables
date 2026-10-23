@@ -26,6 +26,8 @@ mixin, for Django's own admin and [django-unfold](docs/themes/unfold.md):
   can be selected for an action, object by object.
 - **[Search suggestions](#search-suggestions)** — the changelist's search
   box suggests objects as one types; choosing one opens it.
+- **[Autosave](#autosave)** — `list_editable` fields that save themselves
+  as they change, without the "Save" button.
 - **[Unsaved changes](#unsaved-changes)** — the changelist asks before
   losing `list_editable` edits.
 
@@ -81,7 +83,8 @@ changelist (an inline has no `list_display`). Each extra's mixin is
 available on its own too: `ExclusiveRadioFieldsMixin`,
 `ForeignKeyLinkMixin`, `HideableColumnsMixin` (hideable and responsive
 columns), `FooterRowsMixin`, `RowActionsMixin`, `SelectableRowsMixin`,
-`SearchSuggestionsMixin` and `UnsavedChangesMixin`.
+`SearchSuggestionsMixin`, `ListEditableAutosaveMixin` and
+`UnsavedChangesMixin`.
 
 ## Exclusive radio fields
 
@@ -534,6 +537,40 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
 ![The search box of the images, with "snow" typed and three images suggested](docs/screenshots/search-suggestions.png)
 
 ![The same, in Unfold](docs/screenshots/search-suggestions-unfold.png)
+
+## Autosave
+
+The changelist's `list_editable` fields in `list_editable_autosave` save
+themselves as they change, one row and one field at a time — an "active"
+switch, a price — without the "Save" button:
+
+```python
+class ServiceAdmin(AdminTablesMixin, admin.ModelAdmin):
+    list_display = ("name", "price", "active")
+    list_editable = ("price", "active")
+    list_editable_autosave = ("active",)  # or True: all of them
+```
+
+- A switch, a checkbox or a select saves at once; a text, when it's left
+  or on Enter (which then doesn't submit the changelist). Its cell says
+  "Saving…", "Saved", or why not (read by screen readers too).
+- Each save is the changelist's own, for one field: validated by its form
+  (`get_changelist_form()`), allowed by `has_change_permission(request,
+  obj)`, saved through `save_model()` and `save_related()`, and in the
+  object's history. Only that field is sent: nothing else changes.
+- If it can't be saved (not valid, not allowed, gone), the field goes back
+  to what it was. If someone else changed it since the page loaded, it
+  isn't overwritten: it goes back, and says so.
+- One request at a time per field; what changes meanwhile goes after it.
+- With every `list_editable` field saving itself, the "Save" button isn't
+  shown (Django's or Unfold's), and leaving the page asks nothing. With
+  some, the button stays for the others, and only they are "unsaved".
+- Not for `radio_select_exclusive_fields`: checking one row unchecks
+  another, which is the changelist's save.
+
+![The changelist of albums, with their titles and "Is featured" saving themselves, one just saved](docs/screenshots/list-editable-autosave.png)
+
+![The same, in Unfold, with its switches](docs/screenshots/list-editable-autosave-unfold.png)
 
 ## Unsaved changes
 

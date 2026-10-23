@@ -31,6 +31,7 @@ class TestPackage(SimpleTestCase):
             "FooterRowsMixin",
             "ForeignKeyLinkMixin",
             "HideableColumnsMixin",
+            "ListEditableAutosaveMixin",
             "RowActionsMixin",
             "SearchSuggestionsMixin",
             "SelectableRowsMixin",

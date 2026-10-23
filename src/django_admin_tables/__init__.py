@@ -1,5 +1,6 @@
 """Extras for the Django admin's tables: changelists and inlines."""
 
+from .autosave import ListEditableAutosaveMixin
 from .columns import HideableColumnsMixin
 from .fk_links import ForeignKeyLinkMixin
 from .footer import FooterRowsMixin
@@ -16,6 +17,7 @@ __all__ = [
     "FooterRowsMixin",
     "ForeignKeyLinkMixin",
     "HideableColumnsMixin",
+    "ListEditableAutosaveMixin",
     "RowActionsMixin",
     "SearchSuggestionsMixin",
     "SelectableRowsMixin",

@@ -4,6 +4,8 @@
 {% block extrastyle %}
   {{ block.super }}
   {% if django_admin_tables_columns %}<link rel="stylesheet" href="{% static 'django_admin_tables/columns.css' %}">{% endif %}
+  {# Every editable field saves itself: nothing for the "Save" button. #}
+  {% if django_admin_tables_autosave.all %}<link rel="stylesheet" href="{% static 'django_admin_tables/autosave-all.css' %}">{% endif %}
 {% endblock %}
 
 {% block extrahead %}
@@ -15,6 +17,7 @@
     <script src="{% static 'django_admin_tables/columns.js' %}"></script>
   {% endif %}
   {% if django_admin_tables_search %}{{ django_admin_tables_search|json_script:"django-admin-tables-search" }}{% endif %}
+  {% if django_admin_tables_autosave %}{{ django_admin_tables_autosave|json_script:"django-admin-tables-autosave" }}{% endif %}
 {% endblock %}
 
 {% block search %}

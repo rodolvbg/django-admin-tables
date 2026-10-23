@@ -57,8 +57,11 @@ class AlbumAdmin(AdminTablesMixin, ModelAdmin):
     radio_select_exclusive_fields = ("is_featured",)
 
 
-class AlbumStackedAdmin(ModelAdmin):
+class AlbumStackedAdmin(AdminTablesMixin, ModelAdmin):
     inlines = [ImageStackedInline]
+    list_display = ("id", "title", "is_featured")
+    list_editable = ("title", "is_featured")
+    list_editable_autosave = True
 
 
 site.register(Album, AlbumAdmin)

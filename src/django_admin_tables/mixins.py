@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .autosave import ListEditableAutosaveMixin
 from .columns import HideableColumnsMixin
 from .fk_links import ForeignKeyLinkMixin
 from .footer import FooterRowsMixin
@@ -14,6 +15,7 @@ class AdminTablesMixin(
     ForeignKeyLinkMixin,
     HideableColumnsMixin,
     FooterRowsMixin,
+    ListEditableAutosaveMixin,
     RowActionsMixin,
     SearchSuggestionsMixin,
     SelectableRowsMixin,
@@ -34,10 +36,11 @@ class AdminTablesMixin(
     Each extra is off until its option is set
     (``list_display_foreign_key_links``, ``list_display_hideable``,
     ``responsive_columns``, ``footer_rows``, ``row_actions``,
-    ``search_suggestions``, ``radio_select_exclusive_fields``), and works as
-    the mixin of its own (``ForeignKeyLinkMixin``, ``HideableColumnsMixin``,
-    ``FooterRowsMixin``, ``RowActionsMixin``, ``SearchSuggestionsMixin``,
-    ``ExclusiveRadioFieldsMixin``) does. Every row can
+    ``search_suggestions``, ``list_editable_autosave``,
+    ``radio_select_exclusive_fields``), and works as the mixin of its own
+    (``ForeignKeyLinkMixin``, ``HideableColumnsMixin``, ``FooterRowsMixin``,
+    ``RowActionsMixin``, ``SearchSuggestionsMixin``,
+    ``ListEditableAutosaveMixin``, ``ExclusiveRadioFieldsMixin``) does. Every row can
     be selected for an action unless ``is_row_selectable()`` says otherwise
     (``SelectableRowsMixin``). Foreign key
     links and hideable columns only apply to a ``ModelAdmin``'s changelist:

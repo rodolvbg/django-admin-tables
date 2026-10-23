@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `ListEditableAutosaveMixin` (also in `AdminTablesMixin`, with
+  `list_editable_autosave`): `list_editable` fields that save themselves as
+  they change, one row and one field at a time, through the changelist's
+  form, permissions and `save_model()`; what someone else changed meanwhile
+  isn't overwritten. With every editable field saving itself, no "Save"
+  button. Spanish translation of its texts.
 - `SelectableRowsMixin` (also in `AdminTablesMixin`): which rows of the
   changelist can be selected for an action, with `is_row_selectable()`,
   `get_row_unselectable_reason()` and `filter_selectable_rows()`. Their

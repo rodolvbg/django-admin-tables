@@ -54,8 +54,12 @@ class AlbumAdmin(AdminTablesMixin, admin.ModelAdmin):
 
 
 @admin.register(AlbumStacked)
-class AlbumStackedAdmin(admin.ModelAdmin):
+class AlbumStackedAdmin(AdminTablesMixin, admin.ModelAdmin):
     inlines = [ImageStackedInline]
+    # Its changelist's fields save themselves as they change: no "Save".
+    list_display = ("id", "title", "is_featured")
+    list_editable = ("title", "is_featured")
+    list_editable_autosave = True
 
 
 @admin.register(Image)

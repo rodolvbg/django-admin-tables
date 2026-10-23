@@ -1,0 +1,17 @@
+/* ListEditableAutosaveMixin: how a field that saves itself went, next to
+   it. */
+.django-admin-tables-autosave-status {
+    margin-left: 6px;
+    font-size: 0.75rem;
+    color: var(--color-base-500, var(--body-quiet-color, #666));
+    white-space: nowrap;
+}
+
+.django-admin-tables-autosave-status[data-state="saved"] {
+    color: var(--color-green-600, #2e7d32);
+}
+
+.django-admin-tables-autosave-status[data-state="failed"] {
+    color: var(--color-red-600, var(--error-fg, #ba2121));
+    white-space: normal;
+}
