@@ -4,7 +4,7 @@ requires = [ "hatch-fancy-pypi-readme", "hatchling" ]
 
 [project]
 name = "django-admin-tables"
-version = "0.1.0"
+version = "0.1.1"
 description = """\
   Extras for the Django admin's tables, in one mixin: exclusive radio fields, foreign keys as links, hideable and \
   responsive columns, totals and row actions. For changelists and inlines, with django-unfold support.\
