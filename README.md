@@ -510,6 +510,7 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
     search_suggestions = True
     search_suggestions_limit = 8  # optional (8)
     search_suggestions_min_length = 2  # optional (2)
+    search_suggestions_add = True  # optional: nothing found, "+ Add “…”"
 
     def get_search_suggestion_label(self, request, obj):  # optional
         return f"{obj.title} · {obj.album}"
@@ -527,6 +528,13 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
   to its change page (read-only, for those who may only view it).
   `get_search_suggestion_url()` changes where (None: not suggested), and
   `get_search_suggestions(request, term)` which objects.
+- With `search_suggestions_add`, when nothing is found the last option is
+  "+ Add “what was typed”": the add page, with it in a field — `True`: the
+  first of `search_fields` that is an editable field of the model
+  (`"^title"` or `"title__iexact"` count as `title`; none: the add page
+  empty), or the field's name (`search_suggestions_add = "title"`). Only
+  for those who may add; `get_search_suggestion_add_url(request, term)`
+  changes where it leads (None: not offered).
 - It looks like the admin's autocomplete fields: Select2's dropdown, on the
   admin's own stylesheets (and Unfold's), light and dark. The search box
   stays a text box: no jQuery, nor Select2's script.
@@ -537,6 +545,12 @@ class ImageAdmin(AdminTablesMixin, admin.ModelAdmin):
 ![The search box of the images, with "snow" typed and three images suggested](docs/screenshots/search-suggestions.png)
 
 ![The same, in Unfold](docs/screenshots/search-suggestions-unfold.png)
+
+With `search_suggestions_add`, when nothing is found:
+
+![The search box with "Lighthouse" typed: nothing found, and "+ Add “Lighthouse”" highlighted](docs/screenshots/search-suggestions-add.png)
+
+![The same, in Unfold](docs/screenshots/search-suggestions-add-unfold.png)
 
 ## Autosave
 

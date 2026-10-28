@@ -2,7 +2,7 @@
  * SearchSuggestionsMixin: the changelist's search box suggests the objects
  * it finds as one types (an ARIA combobox); choosing one, with the mouse or
  * the keyboard, opens its change page. Enter without choosing one searches
- * as always. Its configuration: the JSON of #django-admin-tables-search.
+ * as always. When nothing is found, it may offer to add it (its add page). Its configuration: the JSON of #django-admin-tables-search.
  *
  * The suggestions look like the admin's autocomplete fields: Select2's
  * dropdown (its markup and classes, on the admin's stylesheets, and
@@ -86,7 +86,7 @@
             links[index].parentElement.scrollIntoView?.({ block: "nearest" });
         }
 
-        function show(found) {
+        function show(found, add) {
             links = [];
             active = -1;
             list.replaceChildren();
@@ -97,10 +97,14 @@
                 empty.textContent = options.texts.empty;
                 list.append(empty);
             }
-            found.forEach((result, index) => {
+            // Nothing found: adding it is one more option, the last.
+            const items = add ? [...found, { ...add, add: true }] : found;
+            items.forEach((result, index) => {
                 const item = document.createElement("li");
                 item.id = `${list.id}-${index}`;
-                item.className = "select2-results__option";
+                item.className = result.add
+                    ? "select2-results__option django-admin-tables-search-add"
+                    : "select2-results__option";
                 item.setAttribute("role", "option");
                 item.setAttribute("aria-selected", "false");
                 const link = document.createElement("a");
@@ -155,7 +159,7 @@
                 const data = await response.json();
                 // Typed on meanwhile: this answer is old.
                 if (input.value.trim() !== term) return;
-                show(data.results);
+                show(data.results, data.add);
             } catch {
                 close(); // Aborted, or failed: the search still works.
             }

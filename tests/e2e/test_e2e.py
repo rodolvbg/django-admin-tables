@@ -504,6 +504,19 @@ class TestSearchSuggestions(_AdminE2ETestCase):
         expect(page).to_have_url(re.compile(r"\?q=city$"))
         expect(page.locator("#result_list tbody tr")).to_have_count(1)
 
+    def test_adds_what_isnt_found(self):
+        self.create_album(images=(("Beach", True),))
+        self.login()
+        page = self.page
+        page.goto(f"{self.live_server_url}/admin/gallery/image/")
+        search = page.locator("#searchbar")
+        search.press_sequentially("Lake")
+        expect(page.get_by_role("option", name="+ Add “Lake”")).to_be_visible()
+        search.press("ArrowDown")
+        search.press("Enter")
+        expect(page).to_have_url(re.compile(r"/image/add/\?title=Lake$"))
+        expect(page.locator("input[name=title]")).to_have_value("Lake")
+
 
 class TestListEditableAutosave(_AdminE2ETestCase):
     """The example's AlbumStackedAdmin: its title and is_featured save

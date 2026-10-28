@@ -139,6 +139,38 @@ describe("search-suggestions.js", () => {
         expect(key("Enter").defaultPrevented).toBe(false);
     });
 
+    it("offers to add what isn't found", async () => {
+        const add = {
+            text: "Add “Lake”",
+            url: "/admin/gallery/image/add/?title=Lake",
+        };
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => ({
+                ok: true,
+                status: 200,
+                json: async () => ({ results: [], add }),
+            })),
+        );
+        const click = vi
+            .spyOn(HTMLAnchorElement.prototype, "click")
+            .mockImplementation(() => {});
+        page();
+        await load();
+        await type("Lake");
+        expect(list().firstElementChild.textContent).toBe("Nothing found.");
+        expect(options()).toHaveLength(1);
+        expect(options()[0].className).toBe(
+            "select2-results__option django-admin-tables-search-add",
+        );
+        const link = options()[0].querySelector("a");
+        expect(link.textContent).toBe(add.text);
+        expect(link.getAttribute("href")).toBe(add.url);
+        expect(key("ArrowDown").defaultPrevented).toBe(true);
+        expect(key("Enter").defaultPrevented).toBe(true);
+        expect(click.mock.contexts[0]).toBe(link);
+    });
+
     it("waits for a pause, and forgets an old answer", async () => {
         let resolve;
         const fetch = vi.fn(

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `search_suggestions_add`: when the search box's suggestions find nothing,
+  their last option adds it — the add page, with what was typed in a field
+  (the first of `search_fields` of the model, or the one named). Only for
+  those who may add; `get_search_suggestion_add_url()` to change it.
+  Spanish translation of its text.
+
 ## [0.1.1] - 2026-10-24
 
 ### Added

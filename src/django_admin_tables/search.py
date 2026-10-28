@@ -6,9 +6,9 @@ from django.conf import settings
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.admin.utils import quote
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import FieldDoesNotExist, PermissionDenied
 from django.forms import Media
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from django.urls import NoReverseMatch, path, reverse
 from django.utils.translation import gettext
 
@@ -39,6 +39,12 @@ class SearchSuggestionsMixin(TableTemplatesMixin):
     ``get_search_suggestion_label()`` and ``get_search_suggestion_url()``
     say how each one shows and where it leads; ``get_search_suggestions()``
     which they are.
+
+    With ``search_suggestions_add``, when nothing is found it offers to add
+    it: a link to the add page, with what was typed in a field (``True``:
+    the first of ``search_fields`` that is a field of the model; a name:
+    that field). Only for those who may add; ``get_search_suggestion_add_url()``
+    changes where it leads.
     """
 
     #: Whether the search box suggests objects.
@@ -47,6 +53,10 @@ class SearchSuggestionsMixin(TableTemplatesMixin):
     search_suggestions_limit = 8
     #: The characters typed before it suggests any.
     search_suggestions_min_length = 2
+    #: When nothing is found, a link to add it: ``True`` (what was typed in
+    #: the first of ``search_fields`` that is a field of the model), or the
+    #: field's name.
+    search_suggestions_add: bool | str = False
 
     @property
     def uses_search_suggestions(self) -> bool:
@@ -83,6 +93,49 @@ class SearchSuggestionsMixin(TableTemplatesMixin):
         except NoReverseMatch:
             return None
 
+    def get_search_suggestion_add_field(self, request: HttpRequest) -> str | None:
+        """The field the add page gets what was typed in: the one of
+        ``search_suggestions_add``, or (``True``) the first of
+        ``search_fields`` that is an editable field of the model (``^title``
+        and ``title__iexact`` too: ``title``). None: the add page as it is."""
+        if isinstance(self.search_suggestions_add, str):
+            return self.search_suggestions_add
+        for name in self.get_search_fields(request):  # type: ignore[attr-defined]
+            field_name, *lookups = name.lstrip("^=@").split("__")
+            try:
+                field = self.model._meta.get_field(field_name)
+            except FieldDoesNotExist:
+                continue
+            if field.is_relation or field.auto_created or not field.editable:
+                continue
+            # Its own lookup at most (title__iexact), not a transform's.
+            if len(lookups) > 1 or (lookups and not field.get_lookup(lookups[0])):
+                continue
+            return field.name
+        return None
+
+    def get_search_suggestion_add_url(
+        self, request: HttpRequest, term: str
+    ) -> str | None:
+        """Where adding what wasn't found leads: the add page, with ``term``
+        in its field (``get_search_suggestion_add_field()``). None: not
+        offered (it's off, or one may not add)."""
+        if not self.search_suggestions_add or not self.has_add_permission(request):
+            return None
+        opts = self.model._meta
+        try:
+            url = reverse(
+                f"{self.admin_site.name}:{opts.app_label}_{opts.model_name}_add"
+            )
+        except NoReverseMatch:
+            return None
+        field = self.get_search_suggestion_add_field(request)
+        if field:
+            query = QueryDict(mutable=True)
+            query[field] = term
+            url = f"{url}?{query.urlencode()}"
+        return url
+
     # The endpoint ------------------------------------------------------------
 
     def get_urls(self) -> list[URLPattern]:
@@ -100,7 +153,8 @@ class SearchSuggestionsMixin(TableTemplatesMixin):
         ]
 
     def search_suggestions_view(self, request: HttpRequest) -> JsonResponse:
-        """``?q=``: the suggestions, as ``{"results": [{id, text, url}]}``."""
+        """``?q=``: the suggestions, as ``{"results": [{id, text, url}]}``;
+        none, and adding is offered: ``"add": {text, url}`` too."""
         if not self.has_view_or_change_permission(request):
             raise PermissionDenied
         term = request.GET.get("q", "").strip()
@@ -119,7 +173,14 @@ class SearchSuggestionsMixin(TableTemplatesMixin):
                         "url": url,
                     }
                 )
-        return JsonResponse({"results": results})
+        data: dict[str, Any] = {"results": results}
+        add = None if results else self.get_search_suggestion_add_url(request, term)
+        if add:
+            data["add"] = {
+                "text": gettext("Add “%(term)s”") % {"term": term},
+                "url": add,
+            }
+        return JsonResponse(data)
 
     # The changelist ----------------------------------------------------------
 

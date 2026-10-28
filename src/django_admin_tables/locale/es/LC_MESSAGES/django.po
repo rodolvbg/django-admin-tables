@@ -79,6 +79,11 @@ msgstr "Sugerencias"
 msgid "Nothing found."
 msgstr "No se encontró nada."
 
+#: search.py
+#, python-format
+msgid "Add “%(term)s”"
+msgstr "Añadir «%(term)s»"
+
 #: selection.py
 #, python-format
 msgid "%(count)d %(name)s was left out: it can't be selected."

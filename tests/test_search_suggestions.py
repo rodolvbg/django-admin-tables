@@ -204,3 +204,74 @@ class TestOptions(TestCase):
             )
             is None
         )
+
+
+class Adding(SearchSuggestionsMixin, admin.ModelAdmin):
+    search_fields = ("album__title", "title__iexact")
+    search_suggestions = True
+    search_suggestions_add = True
+
+
+class AddingCaption(Adding):
+    search_suggestions_add = "caption"
+
+
+class AddingUnprefilled(Adding):
+    # A relation, transforms, an unknown name and the id: none to fill.
+    search_fields = ("album", "title__lower", "title__lower__exact", "nothing", "id")
+
+    def get_search_suggestions(self, request, term):
+        return Image.objects.none()  # Not searchable as they are.
+
+
+class TestAdding(TestCase):
+    """``search_suggestions_add``: when nothing is found, a link to add it."""
+
+    user: User
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser("admin", "admin@example.com", "pw")
+        Image.objects.create(album=Album.objects.create(title="Winter"), title="Cabin")
+
+    def suggest(self, model_admin, term, user=None):
+        request = RequestFactory().get("/", {"q": term})
+        request.user = user or self.user
+        return json.loads(model_admin.search_suggestions_view(request).content)
+
+    def test_offered_when_nothing_is_found_with_what_was_typed(self):
+        data = self.suggest(Adding(Image, admin.site), "Lake & co")
+        add = reverse("admin:gallery_image_add")
+        assert data == {
+            "results": [],
+            "add": {"text": "Add “Lake & co”", "url": f"{add}?title=Lake+%26+co"},
+        }
+
+    def test_not_when_something_is_found(self):
+        data = self.suggest(Adding(Image, admin.site), "cabin")
+        assert len(data["results"]) == 1
+        assert "add" not in data
+
+    def test_in_the_field_it_names(self):
+        data = self.suggest(AddingCaption(Image, admin.site), "Lake")
+        assert data["add"]["url"].endswith("/add/?caption=Lake")
+
+    def test_the_add_page_as_it_is_without_a_field_to_fill(self):
+        data = self.suggest(AddingUnprefilled(Image, admin.site), "Lake")
+        assert data["add"]["url"] == reverse("admin:gallery_image_add")
+
+    def test_only_for_who_may_add(self):
+        viewer = User.objects.create_user("viewer", is_staff=True)
+        viewer.user_permissions.add(Permission.objects.get(codename="view_image"))
+        assert "add" not in self.suggest(Adding(Image, admin.site), "Lake", viewer)
+
+    def test_off_by_default_or_without_its_add_url(self):
+        assert "add" not in self.suggest(Labelled(Image, admin.site), "Lake")
+        site = admin.AdminSite(name="elsewhere")  # Not registered: no URLs.
+        assert "add" not in self.suggest(Adding(Image, site), "Lake")
+
+    def test_the_add_page_fills_the_field(self):
+        self.client.force_login(self.user)
+        data = self.suggest(Adding(Image, admin.site), "Lake")
+        response = self.client.get(data["add"]["url"])
+        assert response.context["adminform"].form.initial["title"] == "Lake"

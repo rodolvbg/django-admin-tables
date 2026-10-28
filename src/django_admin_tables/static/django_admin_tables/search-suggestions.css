@@ -40,3 +40,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Adding what wasn't found: set apart from the message above it. */
+.django-admin-tables-search-dropdown .django-admin-tables-search-add {
+    border-top: 1px solid var(--hairline-color, rgb(0 0 0 / 0.1));
+}
+
+.django-admin-tables-search-dropdown .django-admin-tables-search-add a::before {
+    content: "+ ";
+}
