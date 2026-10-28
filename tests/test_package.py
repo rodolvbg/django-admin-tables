@@ -33,7 +33,6 @@ class TestPackage(SimpleTestCase):
             "HideableColumnsMixin",
             "ListEditableAutosaveMixin",
             "RowActionsMixin",
-            "SearchSuggestionsMixin",
             "SelectableRowsMixin",
             "UnsavedChangesMixin",
             "row_action",

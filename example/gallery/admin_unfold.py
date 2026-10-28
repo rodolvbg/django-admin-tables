@@ -71,9 +71,6 @@ site.register(AlbumStacked, AlbumStackedAdmin)
 class ImageAdmin(AdminTablesMixin, ModelAdmin):
     list_display = ("title", "album", "is_primary", "is_featured")
     search_fields = ("title", "album__title")
-    search_suggestions = True
-    # Nothing found: "+ Add “…”", the add page with it as the title.
-    search_suggestions_add = True
     list_display_foreign_key_links = ("album",)
     list_display_hideable = ("album", "is_primary", "is_featured")
     list_display_hidden = ("is_featured",)
